@@ -1,4 +1,6 @@
 using System.Windows.Documents;
+using System.Windows.Media;
+
 using Vortice.Direct2D1;
 using Vortice.DirectWrite;
 using YMM4TableShapePlugin.Models;
@@ -42,6 +44,8 @@ internal class TableShapeSource : IShapeSource2
 	private int _col;
 	private double _width;
 	private double _height;
+	private Color _borderColor;
+	private Color _backgroundColor;
 
 	public TableShapeSource(
 		IGraphicsDevicesAndContext devices,
@@ -146,6 +150,9 @@ internal class TableShapeSource : IShapeSource2
 			);
 		model.Resize(row, col);
 
+		var bgColor = Parameter.BackgroundColor;
+		var borderColor = Parameter.BorderColor;
+
 		//変更がない場合は戻る
 		if (
 			commandList is not null
@@ -160,6 +167,8 @@ internal class TableShapeSource : IShapeSource2
 			&& _col == col
 			&& _width == width
 			&& _height == height
+			&& _borderColor == borderColor
+			&& _backgroundColor == bgColor
 		)
 		{
 			return;
@@ -171,7 +180,9 @@ internal class TableShapeSource : IShapeSource2
 			length,
 			fps,
 			model,
-			borderWidth
+			borderWidth,
+			bgColor,
+			borderColor
 		);
 
 		//制御点を作成する
@@ -187,6 +198,8 @@ internal class TableShapeSource : IShapeSource2
 		_col = col;
 		_width = width;
 		_height = height;
+		_borderColor = borderColor;
+		_backgroundColor = bgColor;
 	}
 
 	[System.Diagnostics.CodeAnalysis.SuppressMessage(
@@ -199,7 +212,9 @@ internal class TableShapeSource : IShapeSource2
 		int length,
 		int fps,
 		TableModel model,
-		double borderWidth
+		double borderWidth,
+		Color bgColor,
+		Color borderColor
 	)
 	{
 		var ctx = Devices.DeviceContext;
@@ -210,10 +225,15 @@ internal class TableShapeSource : IShapeSource2
 		disposer.Collect(commandList);
 
 		var cellBgBrush = ctx.CreateSolidColorBrush(
-			new(1f, 1f, 1f, 1f)
+			new(bgColor.R, bgColor.G, bgColor.B, bgColor.A)
 		);
 		var borderBrush = ctx.CreateSolidColorBrush(
-			new(0f, 0f, 0f, 1f)
+			new(
+				borderColor.R,
+				borderColor.G,
+				borderColor.B,
+				borderColor.A
+			)
 		);
 		var textBrush = ctx.CreateSolidColorBrush(
 			new(0f, 0f, 0f, 1f)
