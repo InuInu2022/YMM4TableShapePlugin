@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace YMM4TableShapePlugin.Models;
 
 /// <summary>
@@ -22,6 +24,7 @@ namespace YMM4TableShapePlugin.Models;
 /// </property>
 public record TableCell
 {
+	[Display(GroupName = "", Name = "テキスト")]
 	public string Text { get; set; } = "";
 	public required int Row { get; init; }
 	public required int Col { get; init; }

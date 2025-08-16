@@ -1,19 +1,25 @@
+using System.ComponentModel.DataAnnotations;
+
 using YukkuriMovieMaker.Commons;
 
 namespace YMM4TableShapePlugin.Models;
 
 public sealed record TableModel
 {
+	[Display(AutoGenerateField = true)]
 	public IList<Animation> RowBoundaries { get; set; } =
 		[
 			new(0f, BoundariesMin, BoundariesMax),
-			new(100f, BoundariesMin, BoundariesMax),
+			new(500f, BoundariesMin, BoundariesMax),
 		];
+	[Display(AutoGenerateField = true)]
 	public IList<Animation> ColumnBoundaries { get; set; } =
 		[
 			new(0f, BoundariesMin, BoundariesMax),
-			new(100f, BoundariesMin, BoundariesMax),
+			new(300f, BoundariesMin, BoundariesMax),
 		];
+
+	[Display(AutoGenerateField = true)]
 	public IList<IList<TableCell>> Cells
 	{
 		get;
@@ -83,6 +89,7 @@ public sealed record TableModel
 		ColumnBoundaries.Clear();
 
 		for (int r = 0; r <= rows; r++)
+		{
 			RowBoundaries.Add(
 				new(
 					r * DefaultRowHeight,
@@ -90,7 +97,10 @@ public sealed record TableModel
 					BoundariesMax
 				)
 			);
+		}
+
 		for (int c = 0; c <= cols; c++)
+		{
 			ColumnBoundaries.Add(
 				new(
 					c * DefaultColWidth,
@@ -98,5 +108,6 @@ public sealed record TableModel
 					BoundariesMax
 				)
 			);
+		}
 	}
 }

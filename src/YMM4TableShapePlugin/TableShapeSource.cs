@@ -35,9 +35,13 @@ internal class TableShapeSource : IShapeSource2
 	IList<Animation> _rowBoundaries = [];
 	IList<Animation> _columnBoundaries = [];
 	TableModel? _tableModel;
+	double? _borderWidth;
 	bool _disposedValue;
 	ID2D1CommandList? commandList;
-	readonly ID2D1CommandList emptyImage;
+	private int _row;
+	private int _col;
+	private double _width;
+	private double _height;
 
 	public TableShapeSource(
 		IGraphicsDevicesAndContext devices,
@@ -46,30 +50,17 @@ internal class TableShapeSource : IShapeSource2
 	{
 		Devices = devices;
 		Parameter = parameter;
-
-		// ダミー画像（最低限の1x1矩形を描画したコマンドリスト）を生成して保持
-		var ctx = Devices.DeviceContext;
-		emptyImage = ctx.CreateCommandList();
-		ctx.Target = emptyImage;
-		ctx.BeginDraw();
-		// 1x1ピクセルの透明矩形を描画
-		using var brush = ctx.CreateSolidColorBrush(
-			new Vortice.Mathematics.Color4(0, 0, 0, 0)
-		);
-		ctx.FillRectangle(
-			new Vortice.Mathematics.Rect(0, 0, 1, 1),
-			brush
-		);
-		ctx.EndDraw();
-		ctx.Target = null;
-		emptyImage.Close();
-		// emptyImageはDisposeCollectorで管理しない
 	}
 
 	/// <summary>
 	/// 表の描画を行う。TableModelのセル・境界線・テキストを描画する。
 	/// </summary>
 	/// <param name="timelineItemSourceDescription">タイムライン情報</param>
+	[System.Diagnostics.CodeAnalysis.SuppressMessage(
+		"Major Code Smell",
+		"S2589:Boolean expressions should not be gratuitous",
+		Justification = "<保留中>"
+	)]
 	public void Update(
 		TimelineItemSourceDescription timelineItemSourceDescription
 	)
@@ -87,8 +78,73 @@ internal class TableShapeSource : IShapeSource2
 			?? throw new InvalidOperationException(
 				"TableModel is null"
 			);
+
+		// Width/Heightパラメータを境界値に反映
+		if (
+			Parameter.Width.GetValue(frame, length, fps)
+				is double width
+			&& Parameter.ColumnCount.GetValue(
+				frame,
+				length,
+				fps
+			)
+				is double cols
+			&& cols > 0
+		)
+		{
+			var colStep = width / cols;
+			for (
+				var c = 0;
+				c < model.ColumnBoundaries.Count;
+				c++
+			)
+			{
+				model.ColumnBoundaries[c].Values[0].Value =
+					c * colStep;
+			}
+		}
+		if (
+			Parameter.Height.GetValue(frame, length, fps)
+				is double height
+			&& Parameter.RowCount.GetValue(
+				frame,
+				length,
+				fps
+			)
+				is double rows
+			&& rows > 0
+		)
+		{
+			var rowStep = height / rows;
+			for (
+				var r = 0;
+				r < model.RowBoundaries.Count;
+				r++
+			)
+			{
+				model.RowBoundaries[r].Values[0].Value =
+					r * rowStep;
+			}
+		}
+
 		var rBoundaries = model.RowBoundaries;
 		var cBoundaries = model.ColumnBoundaries;
+
+		var borderWidth = Parameter.BorderWidth.GetValue(
+			frame,
+			length,
+			fps
+		);
+
+		var row = (int)
+			Parameter.RowCount.GetValue(frame, length, fps);
+		var col = (int)
+			Parameter.ColumnCount.GetValue(
+				frame,
+				length,
+				fps
+			);
+		model.Resize(row, col);
 
 		//変更がない場合は戻る
 		if (
@@ -99,26 +155,63 @@ internal class TableShapeSource : IShapeSource2
 			&& _columnBoundaries == cBoundaries
 			&& _rowBoundaries.SequenceEqual(rBoundaries)
 			&& _columnBoundaries.SequenceEqual(cBoundaries)
+			&& _borderWidth == borderWidth
+			&& _row == row
+			&& _col == col
+			&& _width == width
+			&& _height == height
 		)
 		{
 			return;
 		}
 
-		// Direct2Dリソース取得
+		// セルを描画する
+		DrawTableCells(
+			frame,
+			length,
+			fps,
+			model,
+			borderWidth
+		);
+
+		//制御点を作成する
+		//UpdateControllerPoints(frame, length, fps);
+
+		//キャッシュ用の情報を保存しておく
+		isFirst = false;
+		_rowBoundaries = rBoundaries;
+		_columnBoundaries = cBoundaries;
+		_tableModel = model;
+		_borderWidth = borderWidth;
+		_row = row;
+		_col = col;
+		_width = width;
+		_height = height;
+	}
+
+	[System.Diagnostics.CodeAnalysis.SuppressMessage(
+		"Usage",
+		"SMA0040:Missing Using Statement",
+		Justification = "<保留中>"
+	)]
+	void DrawTableCells(
+		int frame,
+		int length,
+		int fps,
+		TableModel model,
+		double borderWidth
+	)
+	{
 		var ctx = Devices.DeviceContext;
 
-		// コマンドリスト生成
-#pragma warning disable SMA0040 // Missing Using Statement
 		if (commandList is not null)
 			disposer.RemoveAndDispose(ref commandList);
 		commandList = ctx.CreateCommandList();
 		disposer.Collect(commandList);
 
-		// 描画開始
 		var cellBgBrush = ctx.CreateSolidColorBrush(
 			new(1f, 1f, 1f, 1f)
 		);
-
 		var borderBrush = ctx.CreateSolidColorBrush(
 			new(0f, 0f, 0f, 1f)
 		);
@@ -128,56 +221,56 @@ internal class TableShapeSource : IShapeSource2
 		disposer.Collect(textBrush);
 		disposer.Collect(cellBgBrush);
 		disposer.Collect(borderBrush);
-#pragma warning restore SMA0040 // Missing Using Statement
 
-		var borderWidth = 1.0f;
 		var fontName = "Yu Gothic UI";
-		var fontSize = 20;
+		var fontSize = 34;
 
 		ctx.Target = commandList;
 		ctx.BeginDraw();
-
 		ctx.Clear(null);
 
+		// Width/Height/RowCount/ColumnCountを取得
+		var width = Parameter.Width.GetValue(
+			frame,
+			length,
+			fps
+		);
+		var height = Parameter.Height.GetValue(
+			frame,
+			length,
+			fps
+		);
+		var rowCount = (int)
+			Parameter.RowCount.GetValue(frame, length, fps);
+		var colCount = (int)
+			Parameter.ColumnCount.GetValue(
+				frame,
+				length,
+				fps
+			);
+
 		// セル描画
-		for (int r = 0; r < model.Rows; r++)
+		for (var r = 0; r < rowCount; r++)
 		{
-			for (int c = 0; c < model.Cols; c++)
+			for (var c = 0; c < colCount; c++)
 			{
+				if (r >= model.Rows || c >= model.Cols)
+					continue;
+
 				var cell = model.Cells[r][c];
 
-				// 境界座標取得（安全な範囲チェック）
-				if (
-					c + 1 >= model.ColumnBoundaries.Count
-					|| r + 1 >= model.RowBoundaries.Count
-				)
-				{
-					continue;
-				}
-
-				var left = model
-					.ColumnBoundaries[c]
-					.Values[0]
-					.Value;
-				var top = model
-					.RowBoundaries[r]
-					.Values[0]
-					.Value;
-				var right = model
-					.ColumnBoundaries[c + 1]
-					.Values[0]
-					.Value;
-				var bottom = model
-					.RowBoundaries[r + 1]
-					.Values[0]
-					.Value;
+				// 幅・高さを分割してセル座標・サイズを計算
+				var cellWidth = width / colCount;
+				var cellHeight = height / rowCount;
+				var left = c * cellWidth;
+				var top = r * cellHeight;
 
 				ctx.FillRectangle(
 					new Vortice.Mathematics.Rect(
 						(float)left,
 						(float)top,
-						(float)(right - left),
-						(float)(bottom - top)
+						(float)cellWidth,
+						(float)cellHeight
 					),
 					cellBgBrush
 				);
@@ -186,11 +279,11 @@ internal class TableShapeSource : IShapeSource2
 					new Vortice.Mathematics.Rect(
 						(float)left,
 						(float)top,
-						(float)(right - left),
-						(float)(bottom - top)
+						(float)cellWidth,
+						(float)cellHeight
 					),
 					borderBrush,
-					borderWidth
+					(float)borderWidth
 				);
 
 				if (!string.IsNullOrEmpty(cell.Text))
@@ -216,8 +309,8 @@ internal class TableShapeSource : IShapeSource2
 							new Vortice.Mathematics.Rect(
 								(float)left + 4,
 								(float)top + 4,
-								(float)(right - left - 8),
-								(float)(bottom - top - 8)
+								(float)cellWidth - 8,
+								(float)cellHeight - 8
 							),
 							textBrush
 						);
@@ -229,17 +322,9 @@ internal class TableShapeSource : IShapeSource2
 		ctx.EndDraw();
 		ctx.Target = null;
 		commandList.Close();
-
-		//制御点を作成する
-		UpdateControllerPoints(frame, length, fps);
-
-		//キャッシュ用の情報を保存しておく
-		isFirst = false;
-		_rowBoundaries = rBoundaries;
-		_columnBoundaries = cBoundaries;
-		_tableModel = model;
 	}
 
+	//TODO: 行列の線ごとに制御点を作成する
 	void UpdateControllerPoints(
 		int frame,
 		int length,

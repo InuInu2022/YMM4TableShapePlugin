@@ -1,5 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
+<Project Sdk="Microsoft.NET.Sdk">
   <Import Project="../../buildprops/YMM4Plugin.Build.props" />
   <PropertyGroup>
     <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
@@ -7,7 +6,6 @@
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <AssemblyName>YMM4TableShapePlugin</AssemblyName>
   </PropertyGroup>
-
   <ItemGroup>
     <Reference Include="$(YMM4_PATH)\YukkuriMovieMaker.Controls.dll">
       <Private>false</Private>
@@ -17,34 +15,30 @@
       <Private>false</Private>
       <CopyLocal>false</CopyLocal>
     </Reference>
-
     <Reference Include="Vortice.Direct2D1">
       <HintPath>$(YMM4_PATH)\Vortice.Direct2D1.dll</HintPath>
       <Private>false</Private>
       <CopyLocal>false</CopyLocal>
-		</Reference>
+    </Reference>
     <Reference Include="Vortice.DirectX">
       <HintPath>$(YMM4_PATH)\Vortice.DirectX.dll</HintPath>
       <Private>false</Private>
       <CopyLocal>false</CopyLocal>
-		</Reference>
-
+    </Reference>
     <Reference Include="Vortice.Mathematics">
       <HintPath>$(YMM4_PATH)\Vortice.Mathematics.dll</HintPath>
       <Private>false</Private>
       <CopyLocal>false</CopyLocal>
-		</Reference>
-
+    </Reference>
     <Reference Include="SharpGen.Runtime">
-			<HintPath>$(YMM4_PATH)\SharpGen.Runtime.dll</HintPath>
+      <HintPath>$(YMM4_PATH)\SharpGen.Runtime.dll</HintPath>
       <Private>false</Private>
       <CopyLocal>false</CopyLocal>
-		</Reference>
-		<Reference Include="SharpGen.Runtime.COM">
-			<HintPath>$(YMM4_PATH)\SharpGen.Runtime.COM.dll</HintPath>
+    </Reference>
+    <Reference Include="SharpGen.Runtime.COM">
+      <HintPath>$(YMM4_PATH)\SharpGen.Runtime.COM.dll</HintPath>
       <Private>false</Private>
       <CopyLocal>false</CopyLocal>
-		</Reference>
+    </Reference>
   </ItemGroup>
-
 </Project>
