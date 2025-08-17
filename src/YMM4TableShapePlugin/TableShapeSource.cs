@@ -346,10 +346,10 @@ internal class TableShapeSource : IShapeSource2
 		{
 			ctx.DrawRectangle(
 				new Vortice.Mathematics.Rect(
-					-(float)outerBorderWidth / 2,
-					-(float)outerBorderWidth / 2,
-					(float)width + (float)outerBorderWidth,
-					(float)height + (float)outerBorderWidth
+					(float)outerBorderWidth / 2f,
+					(float)outerBorderWidth / 2f,
+					(float)width - (float)outerBorderWidth,
+					(float)height - (float)outerBorderWidth
 				),
 				outerBorderBrush,
 				(float)outerBorderWidth
@@ -357,13 +357,15 @@ internal class TableShapeSource : IShapeSource2
 		}
 
 		// セル描画領域を外枠分だけ内側にオフセット
-		var cellAreaLeft = outerBorderWidth;
-		var cellAreaTop = outerBorderWidth;
-		var cellAreaWidth = width - outerBorderWidth * 2;
-		var cellAreaHeight = height - outerBorderWidth * 2;
+		var cellAreaLeft = (float)outerBorderWidth;
+		var cellAreaTop = (float)outerBorderWidth;
+		var cellAreaWidth =
+			(float)width - (float)outerBorderWidth * 2f;
+		var cellAreaHeight =
+			(float)height - (float)outerBorderWidth * 2f;
 
-		var cellWidth = cellAreaWidth / colCount;
-		var cellHeight = cellAreaHeight / rowCount;
+		var cellWidth = cellAreaWidth / (float)colCount;
+		var cellHeight = cellAreaHeight / (float)rowCount;
 
 		for (var r = 0; r < rowCount; r++)
 		{
@@ -377,52 +379,51 @@ internal class TableShapeSource : IShapeSource2
 				var left = cellAreaLeft + c * cellWidth;
 				var top = cellAreaTop + r * cellHeight;
 
+				// セル背景
 				ctx.FillRectangle(
 					new Vortice.Mathematics.Rect(
-						(float)left,
-						(float)top,
-						(float)cellWidth,
-						(float)cellHeight
+						left,
+						top,
+						cellWidth,
+						cellHeight
 					),
 					cellBgBrush
 				);
 
-				ctx.DrawRectangle(
-					new Vortice.Mathematics.Rect(
-						(float)left,
-						(float)top,
-						(float)cellWidth,
-						(float)cellHeight
-					),
-					borderBrush,
-					(float)borderWidth
-				);
-
-				// セル内側のouterBorder描画（borderの内側）
-				if (outerBorderWidth > 0)
+				// セル枠線（border）
+				if (borderWidth > 0)
 				{
-					var innerLeft =
-						(float)left
-						+ (float)borderWidth / 2;
-					var innerTop =
-						(float)top + (float)borderWidth / 2;
-					var innerWidth = Math.Max(
-						0,
-						(float)cellWidth
-							- (float)borderWidth
-					);
-					var innerHeight = Math.Max(
-						0,
-						(float)cellHeight
-							- (float)borderWidth
-					);
-
 					ctx.DrawRectangle(
 						new Vortice.Mathematics.Rect(
-							innerLeft,
-							innerTop,
-							innerWidth,
-							innerHeight
+							left + (float)borderWidth / 2f,
+							top + (float)borderWidth / 2f,
+							cellWidth - (float)borderWidth,
+							cellHeight - (float)borderWidth
+						),
+						borderBrush,
+						(float)borderWidth
+					);
+				}
+
+				// セル内枠線（outerBorderの内側）
+				if (outerBorderWidth > 0)
+				{
+					ctx.DrawRectangle(
+						new Vortice.Mathematics.Rect(
+							left
+								+ (float)borderWidth
+								+ (float)outerBorderWidth
+									/ 2f,
+							top
+								+ (float)borderWidth
+								+ (float)outerBorderWidth
+									/ 2f,
+							cellWidth
+								- 2f * (float)borderWidth
+								- (float)outerBorderWidth,
+							cellHeight
+								- 2f * (float)borderWidth
+								- (float)outerBorderWidth
 						),
 						outerBorderBrush,
 						(float)outerBorderWidth
@@ -460,23 +461,19 @@ internal class TableShapeSource : IShapeSource2
 					cell.Text,
 					textFormat,
 					new Vortice.Mathematics.Rect(
-						(float)left
-							+ borderAndOuter
-							+ padding,
-						(float)top
-							+ borderAndOuter
-							+ padding,
-						Math.Max(
-							0,
-							(float)cellWidth
+						left + borderAndOuter + padding,
+						top + borderAndOuter + padding,
+						MathF.Max(
+							0f,
+							cellWidth
 								- (borderAndOuter + padding)
-									* 2
+									* 2f
 						),
-						Math.Max(
-							0,
-							(float)cellHeight
+						MathF.Max(
+							0f,
+							cellHeight
 								- (borderAndOuter + padding)
-									* 2
+									* 2f
 						)
 					),
 					textBrush
