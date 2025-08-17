@@ -98,52 +98,14 @@ internal class TableShapeSource : IShapeSource2
 			);
 
 		// Width/Heightパラメータを境界値に反映
-		if (
-			Parameter.Width.GetValue(frame, length, fps)
-				is double width
-			&& Parameter.ColumnCount.GetValue(
-				frame,
-				length,
-				fps
-			)
-				is double cols
-			&& cols > 0
-		)
-		{
-			var colStep = width / cols;
-			for (
-				var c = 0;
-				c < model.ColumnBoundaries.Count;
-				c++
-			)
-			{
-				model.ColumnBoundaries[c].Values[0].Value =
-					c * colStep;
-			}
-		}
-		if (
-			Parameter.Height.GetValue(frame, length, fps)
-				is double height
-			&& Parameter.RowCount.GetValue(
-				frame,
-				length,
-				fps
-			)
-				is double rows
-			&& rows > 0
-		)
-		{
-			var rowStep = height / rows;
-			for (
-				var r = 0;
-				r < model.RowBoundaries.Count;
-				r++
-			)
-			{
-				model.RowBoundaries[r].Values[0].Value =
-					r * rowStep;
-			}
-		}
+		UpdateBoundaryValues(
+			frame,
+			length,
+			fps,
+			model,
+			out double width,
+			out double height
+		);
 
 		var rBoundaries = model.RowBoundaries;
 		var cBoundaries = model.ColumnBoundaries;
@@ -174,6 +136,8 @@ internal class TableShapeSource : IShapeSource2
 		var borderColor = Parameter.BorderColor;
 		var outerBorderColor = Parameter.OuterBorderColor;
 
+		var textLists = Parameter.Cells.Select(c => c.Text);
+		var cellLists = Parameter.Cells;
 		//変更がない場合は戻る
 		if (
 			commandList is not null
@@ -192,6 +156,11 @@ internal class TableShapeSource : IShapeSource2
 			&& _backgroundColor == bgColor
 			&& _outerBorderWidth == outerBorderWidth
 			&& _outerBorderColor == outerBorderColor
+			&& _textLists.SequenceEqual(
+				textLists,
+				StringComparer.Ordinal
+			)
+			&& _cellLists.SequenceEqual(cellLists)
 		)
 		{
 			System.Diagnostics.Debug.WriteLine(
@@ -206,15 +175,28 @@ internal class TableShapeSource : IShapeSource2
 		var sw = System.Diagnostics.Stopwatch.StartNew();
 		// セルを描画する
 		DrawTableCells(
-			frame,
-			length,
-			fps,
-			model,
-			borderWidth,
-			outerBorderWidth,
-			bgColor,
-			borderColor,
-			outerBorderColor
+			new TableRenderContext(
+				frame,
+				length,
+				fps,
+				model,
+				borderWidth,
+				outerBorderWidth,
+				Devices.DeviceContext,
+				null, // CellBackgroundBrushはDrawTableCells内で生成
+				null, // TextBrushも同様
+				null, // WriteFactoryも同様
+				Width: width,
+				Height: height,
+				RowCount: row,
+				ColCount: col,
+				(float)(outerBorderWidth * 2 + borderWidth),
+				(float)(outerBorderWidth * 2 + borderWidth)
+					/ 2f,
+				bgColor,
+				borderColor,
+				outerBorderColor
+			)
 		);
 
 		sw.Stop();
@@ -239,37 +221,98 @@ internal class TableShapeSource : IShapeSource2
 		_backgroundColor = bgColor;
 		_outerBorderColor = outerBorderColor;
 		_outerBorderWidth = outerBorderWidth;
+		_textLists = [.. textLists.ToList()];
+		_cellLists =
+		[
+			.. cellLists
+				.Select(c => c.Clone() as Models.TableCell)
+				.OfType<Models.TableCell>()
+				.ToList(),
+		];
+	}
+
+	void UpdateBoundaryValues(
+		int frame,
+		int length,
+		int fps,
+		TableModel model,
+		out double vWidth,
+		out double vHeight
+	)
+	{
+		vWidth = 0;
+		vHeight = 0;
+		var cols = Parameter.ColumnCount.GetValue(
+			frame,
+			length,
+			fps
+		);
+		if (cols > 0)
+		{
+			vWidth = Parameter.Width.GetValue(
+				frame,
+				length,
+				fps
+			);
+
+			var colStep = vWidth / cols;
+			for (
+				var c = 0;
+				c < model.ColumnBoundaries.Count;
+				c++
+			)
+			{
+				model.ColumnBoundaries[c].Values[0].Value =
+					c * colStep;
+			}
+		}
+		var rows = Parameter.RowCount.GetValue(
+			frame,
+			length,
+			fps
+		);
+		if (rows > 0)
+		{
+			vHeight = Parameter.Height.GetValue(
+				frame,
+				length,
+				fps
+			);
+			var rowStep = vHeight / rows;
+			for (
+				var r = 0;
+				r < model.RowBoundaries.Count;
+				r++
+			)
+			{
+				model.RowBoundaries[r].Values[0].Value =
+					r * rowStep;
+			}
+		}
 	}
 
 	ID2D1SolidColorBrush? cachedOuterBorderBrush;
 	Color? cachedOuterBorderColor;
 	float? cachedOuterBorderWidth;
+	IEnumerable<string> _textLists = [];
+	ImmutableList<Models.TableCell> _cellLists = [];
 
 	[System.Diagnostics.CodeAnalysis.SuppressMessage(
 		"Usage",
 		"SMA0040:Missing Using Statement",
 		Justification = "<保留中>"
 	)]
-	void DrawTableCells(
-		int frame,
-		int length,
-		int fps,
-		TableModel model,
-		double borderWidth,
-		double outerBorderWidth,
-		Color bgColor,
-		Color borderColor,
-		Color outerBorderColor
-	)
+	void DrawTableCells(TableRenderContext context)
 	{
 		var ctx = Devices.DeviceContext;
 
 		// outerBorderBrushキャッシュ（色・太さ変更時のみ再生成）
 		if (
 			cachedOuterBorderBrush is null
-			|| cachedOuterBorderColor != outerBorderColor
+			|| cachedOuterBorderColor
+				!= context.OuterBorderColor
 			|| cachedOuterBorderWidth
-				!= (float)outerBorderWidth
+				!= (float)context.OuterBorderWidth
 		)
 		{
 			disposer.RemoveAndDispose(
@@ -278,32 +321,40 @@ internal class TableShapeSource : IShapeSource2
 			cachedOuterBorderBrush =
 				ctx.CreateSolidColorBrush(
 					new(
-						outerBorderColor.R,
-						outerBorderColor.G,
-						outerBorderColor.B,
-						outerBorderColor.A
+						context.OuterBorderColor.R,
+						context.OuterBorderColor.G,
+						context.OuterBorderColor.B,
+						context.OuterBorderColor.A
 					)
 				);
 			disposer.Collect(cachedOuterBorderBrush);
-			cachedOuterBorderColor = outerBorderColor;
-			cachedOuterBorderWidth =
-				(float)outerBorderWidth;
+			cachedOuterBorderColor =
+				context.OuterBorderColor;
+			cachedOuterBorderWidth = (float)
+				context.OuterBorderWidth;
 		}
 
 		if (commandList is not null)
+		{
 			disposer.RemoveAndDispose(ref commandList);
+		}
 		commandList = ctx.CreateCommandList();
 		disposer.Collect(commandList);
 
 		var cellBgBrush = ctx.CreateSolidColorBrush(
-			new(bgColor.R, bgColor.G, bgColor.B, bgColor.A)
+			new(
+				context.BackgroundColor.R,
+				context.BackgroundColor.G,
+				context.BackgroundColor.B,
+				context.BackgroundColor.A
+			)
 		);
 		var borderBrush = ctx.CreateSolidColorBrush(
 			new(
-				borderColor.R,
-				borderColor.G,
-				borderColor.B,
-				borderColor.A
+				context.BorderColor.R,
+				context.BorderColor.G,
+				context.BorderColor.B,
+				context.BorderColor.A
 			)
 		);
 		var outerBorderBrush = cachedOuterBorderBrush;
@@ -315,67 +366,176 @@ internal class TableShapeSource : IShapeSource2
 		disposer.Collect(borderBrush);
 		disposer.Collect(outerBorderBrush);
 
-		var fontName = "Yu Gothic UI";
-		var fontSize = 34;
-
 		using var dwFactory =
 			DWrite.DWriteCreateFactory<IDWriteFactory>(
 				Vortice.DirectWrite.FactoryType.Shared
 			);
-		using var textFormat = dwFactory.CreateTextFormat(
-			fontName,
-			fontSize
-		);
 
 		ctx.Target = commandList;
 		ctx.BeginDraw();
 		ctx.Clear(null);
 
-		var width = Parameter.Width.GetValue(
-			frame,
-			length,
-			fps
+		// セル背景・テキスト描画
+		RenderTableCells(
+			context with
+			{
+				CellBackgroundBrush = cellBgBrush,
+				TextBrush = textBrush,
+				WriteFactory = dwFactory,
+			}
 		);
-		var height = Parameter.Height.GetValue(
-			frame,
-			length,
-			fps
-		);
-		var rowCount = (int)
-			Parameter.RowCount.GetValue(frame, length, fps);
-		var colCount = (int)
-			Parameter.ColumnCount.GetValue(
-				frame,
-				length,
-				fps
+
+		var cellWidth =
+			(float)context.Width / context.ColCount;
+		var cellHeight =
+			(float)context.Height / context.RowCount;
+
+		if (context.OuterBorderWidth > 0)
+		{
+			ctx.DrawRectangle(
+				new Vortice.Mathematics.Rect(
+					context.RealOuterWidth / 2f,
+					context.RealOuterWidth / 2f,
+					(float)context.Width
+						- context.RealOuterWidth / 2f,
+					(float)context.Height
+						- context.RealOuterWidth / 2f
+				),
+				outerBorderBrush,
+				context.RealOuterWidth
 			);
 
-		// セル背景・テキスト描画
-		//   最背面に来るように先に描画
-		var cellWidthBg = (float)width / colCount;
-		var cellHeightBg = (float)height / rowCount;
-
-		for (var r = 0; r < rowCount; r++)
-		{
-			for (var c = 0; c < colCount; c++)
+			for (var c = 1; c < context.ColCount; c++)
 			{
-				if (r >= model.Rows || c >= model.Cols)
+				var x = c * cellWidth;
+				ctx.DrawLine(
+					new Vector2(x, 0f),
+					new Vector2(x, (float)context.Height),
+					outerBorderBrush,
+					context.RealOuterWidth
+				);
+			}
+			for (var r = 1; r < context.RowCount; r++)
+			{
+				var y = r * cellHeight;
+				ctx.DrawLine(
+					new Vector2(0f, y),
+					new Vector2((float)context.Width, y),
+					outerBorderBrush,
+					context.RealOuterWidth
+				);
+			}
+		}
+
+		if (context.BorderWidth > 0)
+		{
+			var margin = context.RealOuterWidth / 2f;
+
+			ctx.DrawRectangle(
+				new Vortice.Mathematics.Rect(
+					margin,
+					margin,
+					(float)(context.Width - margin),
+					(float)(context.Height - margin)
+				),
+				borderBrush,
+				(float)context.BorderWidth
+			);
+
+			for (var c = 1; c < context.ColCount; c++)
+			{
+				var x = c * cellWidth;
+				ctx.DrawLine(
+					new Vector2(x, margin),
+					new Vector2(x, (float)context.Height),
+					borderBrush,
+					(float)context.BorderWidth
+				);
+			}
+			for (var r = 1; r < context.RowCount; r++)
+			{
+				var y = r * cellHeight;
+				ctx.DrawLine(
+					new Vector2(margin, y),
+					new Vector2((float)context.Width, y),
+					borderBrush,
+					(float)context.BorderWidth
+				);
+			}
+		}
+
+		ctx.EndDraw();
+		ctx.Target = null;
+		commandList.Close();
+	}
+
+	/// <summary>
+	/// テーブル描画に必要なパラメータをまとめた構造体
+	/// </summary>
+	readonly record struct TableRenderContext(
+		int Frame,
+		int Length,
+		int Fps,
+		TableModel Model,
+		double BorderWidth,
+		double OuterBorderWidth,
+		ID2D1DeviceContext6 DeviceContext,
+		ID2D1SolidColorBrush? CellBackgroundBrush,
+		ID2D1SolidColorBrush? TextBrush,
+		IDWriteFactory? WriteFactory,
+		double Width,
+		double Height,
+		int RowCount,
+		int ColCount,
+		float RealOuterWidth,
+		float OuterMargin,
+		Color BackgroundColor,
+		Color BorderColor,
+		Color OuterBorderColor
+	);
+
+	const string DefaultFontName = "Yu Gothic UI";
+	const float DefaultFontSize = 34f;
+
+	private static void RenderTableCells(
+		TableRenderContext ctx
+	)
+	{
+		var cellWidthBg =
+			(float)(ctx.Width - ctx.RealOuterWidth)
+			/ ctx.ColCount;
+		var cellHeightBg =
+			(float)(ctx.Height - ctx.RealOuterWidth)
+			/ ctx.RowCount;
+
+		for (var r = 0; r < ctx.RowCount; r++)
+		{
+			for (var c = 0; c < ctx.ColCount; c++)
+			{
+				if (
+					r >= ctx.Model.Rows
+					|| c >= ctx.Model.Cols
+				)
+				{
 					continue;
+				}
 
-				var cell = model.Cells[r][c];
+				var cell = ctx.Model.Cells[r][c];
 
-				var left = c * cellWidthBg;
-				var top = r * cellHeightBg;
+				var left =
+					c * cellWidthBg + ctx.OuterMargin;
+				var top =
+					r * cellHeightBg + ctx.OuterMargin;
 
 				// セル背景
-				ctx.FillRectangle(
+				ctx.DeviceContext.FillRectangle(
 					new Vortice.Mathematics.Rect(
 						left,
 						top,
 						cellWidthBg,
 						cellHeightBg
 					),
-					cellBgBrush
+					ctx.CellBackgroundBrush!
 				);
 
 				// 文字描画（枠線＋padding分だけ内側にオフセット）
@@ -384,10 +544,25 @@ internal class TableShapeSource : IShapeSource2
 
 				var padding = 4f;
 				var borderAndOuter =
-					(float)borderWidth
-					+ (float)outerBorderWidth;
+					(float)ctx.BorderWidth
+					+ (float)ctx.OuterBorderWidth;
 
-				ctx.DrawText(
+				var fSize = (float)
+					cell.FontSize.GetValue(
+						ctx.Frame,
+						ctx.Length,
+						ctx.Fps
+					);
+
+				using var textFormat =
+					ctx.WriteFactory!.CreateTextFormat(
+						cell.Font is not ""
+							? cell.Font
+							: DefaultFontName,
+						fSize > 0f ? fSize : DefaultFontSize
+					);
+
+				ctx.DeviceContext.DrawText(
 					cell.Text,
 					textFormat,
 					new Vortice.Mathematics.Rect(
@@ -406,113 +581,17 @@ internal class TableShapeSource : IShapeSource2
 									* 2f
 						)
 					),
-					cell?.FontColor is not null
-						? ctx.CreateSolidColorBrush(
-							new(
-								red: cell.FontColor.R,
-								green: cell.FontColor.G,
-								blue: cell.FontColor.B,
-								alpha: cell.FontColor.A
-							)
+					ctx.DeviceContext!.CreateSolidColorBrush(
+						new(
+							red: cell.FontColor.R,
+							green: cell.FontColor.G,
+							blue: cell.FontColor.B,
+							alpha: cell.FontColor.A
 						)
-						: textBrush
+					)
 				);
 			}
 		}
-
-		// 外枠線（outerBorder）を背面に描画
-		var cellWidth = (float)width / colCount;
-		var cellHeight = (float)height / rowCount;
-
-		// 中心揃えて重ねるので外枠幅*2 + グリッド線幅
-		var realOuterWidth = (float)(
-			outerBorderWidth * 2 + borderWidth
-		);
-		if (outerBorderWidth > 0)
-		{
-			//一番外側はDrawRectで描画
-			ctx.DrawRectangle(
-				new Vortice.Mathematics.Rect(
-					realOuterWidth / 2f,
-					realOuterWidth / 2f,
-					(float)width - realOuterWidth / 2f,
-					(float)height - realOuterWidth / 2f
-				),
-				outerBorderBrush,
-				realOuterWidth
-			);
-
-			// 縦線（列境界）
-			for (var c = 1; c < colCount; c++)
-			{
-				var x = c * cellWidth;
-				ctx.DrawLine(
-					new Vector2(x, 0f),
-					new Vector2(x, (float)height),
-					outerBorderBrush,
-					realOuterWidth
-				);
-			}
-			// 横線（行境界）
-			for (var r = 1; r < rowCount; r++)
-			{
-				var y = r * cellHeight;
-				ctx.DrawLine(
-					new Vector2(0f, y),
-					new Vector2((float)width, y),
-					outerBorderBrush,
-					realOuterWidth
-				);
-			}
-		}
-
-		// グリッド線（border）を一括描画
-		//  グリッド線（border）は外枠線の中心に描画されないとダメ
-		//  重ねるためにグリッド線描がの前に外枠線も同じように描画が必要
-		if (borderWidth > 0)
-		{
-			//一番外側はDrawRectで描画
-			// DrawLineだと角が欠ける
-			var margin = realOuterWidth / 2f;
-
-			ctx.DrawRectangle(
-				new Vortice.Mathematics.Rect(
-					margin,
-					margin,
-					(float)(width - margin),
-					(float)(height - margin)
-				),
-				borderBrush,
-				(float)borderWidth
-			);
-
-			// 縦線（列境界）
-			for (var c = 1; c < colCount; c++)
-			{
-				var x = c * cellWidth;
-				ctx.DrawLine(
-					new Vector2(x, margin),
-					new Vector2(x, (float)height),
-					borderBrush,
-					(float)borderWidth
-				);
-			}
-			// 横線（行境界）
-			for (var r = 1; r < rowCount; r++)
-			{
-				var y = r * cellHeight;
-				ctx.DrawLine(
-					new Vector2(margin, y),
-					new Vector2((float)width, y),
-					borderBrush,
-					(float)borderWidth
-				);
-			}
-		}
-
-		ctx.EndDraw();
-		ctx.Target = null;
-		commandList.Close();
 	}
 
 	//TODO: 行列の線ごとに制御点を作成する

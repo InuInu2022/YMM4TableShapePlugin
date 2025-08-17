@@ -163,7 +163,7 @@ internal class TableShapeParameter(
 	public TableShapeParameter()
 		: this(null)
 	{
-		SubscribeChildUndoRedoable(Cells);
+		//SubscribeChildUndoRedoable(Cells);
 	}
 
 	public override IEnumerable<string> CreateMaskExoFilter(
@@ -217,6 +217,8 @@ internal class TableShapeParameter(
 			OuterBorderWidth,
 			RowCount,
 			ColumnCount,
+			TableModel,
+			.. Cells,
 			.. TableModel.RowBoundaries,
 			.. TableModel.ColumnBoundaries,
 		];

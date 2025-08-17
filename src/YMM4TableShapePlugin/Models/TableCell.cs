@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Windows.Media;
 
@@ -27,19 +29,25 @@ namespace YMM4TableShapePlugin.Models;
 /// <property name="IsMergeRoot">
 /// このセルが結合セルグループのルート（複数行または複数列にまたがる）であるかどうかを示す値。
 /// </property>
-public sealed class TableCell : Animatable
+public sealed class TableCell : Animatable, ICloneable
 {
 	[Display(GroupName = "セル", Name = "テキスト")]
-	//[TextEditor(AcceptsReturn = true)]
+	/*[TextEditor(
+		AcceptsReturn = true,
+		PropertyEditorSize = PropertyEditorSize.Normal
+	)]*/
 	[RichTextEditor(
 		DecorationPropertyName = "Decorations",
 		FontPropertyName = "Font",
-		ForegroundPropertyName = "FontColor"
+		ForegroundPropertyName = "FontColor",
+		PropertyEditorSize = PropertyEditorSize.Normal
 	)]
 	public string Text
 	{
 		get => _text;
-		set =>
+		set
+		{
+			BeginEdit();
 			Set(
 				ref _text,
 				value,
@@ -47,13 +55,22 @@ public sealed class TableCell : Animatable
 				"Label",
 				"Description"
 			);
+			EndEditAsync().AsTask().Wait();
+		}
 	}
 	string _text = string.Empty;
 
+	public ImmutableList<TextDecoration> Decorations
+	{
+		get { return _decorations; }
+		set { Set(ref _decorations, value, "Decorations"); }
+	}
+	ImmutableList<TextDecoration> _decorations = [];
+
 	[Display(
 		GroupName = "セル",
-		Name = nameof(Texts.TextItemFontName),
-		Description = nameof(Texts.TextItemFontDesc)
+		Name = "フォント",
+		Description = ""
 	)]
 	[FontComboBox]
 	public string Font
@@ -65,7 +82,8 @@ public sealed class TableCell : Animatable
 
 	[Display(
 		GroupName = "セル",
-		Name = nameof(Texts.TextItemFontColorName)
+		Name = "文字色",
+		Description = ""
 	)]
 	[ColorPicker]
 	public Color FontColor
@@ -74,6 +92,17 @@ public sealed class TableCell : Animatable
 		set => Set(ref _fontColor, value);
 	}
 	private Color _fontColor = Colors.Black;
+
+	[Display(
+		GroupName = "セル",
+		Name = "サイズ",
+		Description = ""
+	)]
+	[AnimationSlider("F1", "", 1, 50)]
+	[DefaultValue(34)]
+	[Range(1.0, 50)]
+	public Animation FontSize { get; set; } =
+		new Animation(34, 1, 1000);
 
 	public required int Row { get; init; }
 	public required int Col { get; init; }
@@ -89,5 +118,20 @@ public sealed class TableCell : Animatable
 	protected override IEnumerable<IAnimatable> GetAnimatables()
 	{
 		return [];
+	}
+
+	public object Clone()
+	{
+		return new TableCell()
+		{
+			Col = Col,
+			Row = Row,
+			ColSpan = ColSpan,
+			RowSpan = RowSpan,
+			ParentCell = ParentCell?.Clone() as TableCell,
+			Font = Font,
+			FontColor = FontColor,
+			Text = Text,
+		};
 	}
 }
