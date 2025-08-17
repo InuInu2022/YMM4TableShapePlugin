@@ -8,6 +8,7 @@ using YMM4TableShapePlugin.Models;
 using YukkuriMovieMaker.Commons;
 using YukkuriMovieMaker.Player.Video;
 using YukkuriMovieMaker.Plugin.Shape;
+using System.Numerics;
 
 namespace YMM4TableShapePlugin;
 
@@ -289,7 +290,6 @@ internal class TableShapeSource : IShapeSource2
 				(float)outerBorderWidth;
 		}
 
-		// 以降 cachedOuterBorderBrush を利用
 		if (commandList is not null)
 			disposer.RemoveAndDispose(ref commandList);
 		commandList = ctx.CreateCommandList();
@@ -318,6 +318,15 @@ internal class TableShapeSource : IShapeSource2
 		var fontName = "Yu Gothic UI";
 		var fontSize = 34;
 
+		using var dwFactory =
+			DWrite.DWriteCreateFactory<IDWriteFactory>(
+				Vortice.DirectWrite.FactoryType.Shared
+			);
+		using var textFormat = dwFactory.CreateTextFormat(
+			fontName,
+			fontSize
+		);
+
 		ctx.Target = commandList;
 		ctx.BeginDraw();
 		ctx.Clear(null);
@@ -341,31 +350,10 @@ internal class TableShapeSource : IShapeSource2
 				fps
 			);
 
-		// テーブル全体の外枠を描画
-		if (outerBorderWidth > 0)
-		{
-			ctx.DrawRectangle(
-				new Vortice.Mathematics.Rect(
-					(float)outerBorderWidth / 2f,
-					(float)outerBorderWidth / 2f,
-					(float)width - (float)outerBorderWidth,
-					(float)height - (float)outerBorderWidth
-				),
-				outerBorderBrush,
-				(float)outerBorderWidth
-			);
-		}
-
-		// セル描画領域を外枠分だけ内側にオフセット
-		var cellAreaLeft = (float)outerBorderWidth;
-		var cellAreaTop = (float)outerBorderWidth;
-		var cellAreaWidth =
-			(float)width - (float)outerBorderWidth * 2f;
-		var cellAreaHeight =
-			(float)height - (float)outerBorderWidth * 2f;
-
-		var cellWidth = cellAreaWidth / (float)colCount;
-		var cellHeight = cellAreaHeight / (float)rowCount;
+		// セル背景・テキスト描画
+		//   最背面に来るように先に描画
+		var cellWidthBg = (float)width / colCount;
+		var cellHeightBg = (float)height / rowCount;
 
 		for (var r = 0; r < rowCount; r++)
 		{
@@ -376,80 +364,22 @@ internal class TableShapeSource : IShapeSource2
 
 				var cell = model.Cells[r][c];
 
-				var left = cellAreaLeft + c * cellWidth;
-				var top = cellAreaTop + r * cellHeight;
+				var left = c * cellWidthBg;
+				var top = r * cellHeightBg;
 
 				// セル背景
 				ctx.FillRectangle(
 					new Vortice.Mathematics.Rect(
 						left,
 						top,
-						cellWidth,
-						cellHeight
+						cellWidthBg,
+						cellHeightBg
 					),
 					cellBgBrush
 				);
 
-				// セル枠線（border）
-				if (borderWidth > 0)
-				{
-					ctx.DrawRectangle(
-						new Vortice.Mathematics.Rect(
-							left + (float)borderWidth / 2f,
-							top + (float)borderWidth / 2f,
-							cellWidth - (float)borderWidth,
-							cellHeight - (float)borderWidth
-						),
-						borderBrush,
-						(float)borderWidth
-					);
-				}
-
-				// セル内枠線（outerBorderの内側）
-				if (outerBorderWidth > 0)
-				{
-					ctx.DrawRectangle(
-						new Vortice.Mathematics.Rect(
-							left
-								+ (float)borderWidth
-								+ (float)outerBorderWidth
-									/ 2f,
-							top
-								+ (float)borderWidth
-								+ (float)outerBorderWidth
-									/ 2f,
-							cellWidth
-								- 2f * (float)borderWidth
-								- (float)outerBorderWidth,
-							cellHeight
-								- 2f * (float)borderWidth
-								- (float)outerBorderWidth
-						),
-						outerBorderBrush,
-						(float)outerBorderWidth
-					);
-				}
-
 				// 文字描画（枠線＋padding分だけ内側にオフセット）
 				if (string.IsNullOrEmpty(cell.Text))
-					continue;
-
-				using var dwFactory =
-					DWrite.DWriteCreateFactory<IDWriteFactory>(
-						Vortice
-							.DirectWrite
-							.FactoryType
-							.Shared
-					);
-				using var textFormat =
-					dwFactory.CreateTextFormat(
-						string.IsNullOrEmpty(cell.Font)
-							? fontName
-							: cell.Font,
-						fontSize
-					);
-
-				if (textFormat is null)
 					continue;
 
 				var padding = 4f;
@@ -465,18 +395,108 @@ internal class TableShapeSource : IShapeSource2
 						top + borderAndOuter + padding,
 						MathF.Max(
 							0f,
-							cellWidth
+							cellWidthBg
 								- (borderAndOuter + padding)
 									* 2f
 						),
 						MathF.Max(
 							0f,
-							cellHeight
+							cellHeightBg
 								- (borderAndOuter + padding)
 									* 2f
 						)
 					),
 					textBrush
+				);
+			}
+		}
+
+		// 外枠線（outerBorder）を背面に描画
+		var cellWidth = (float)width / colCount;
+		var cellHeight = (float)height / rowCount;
+
+		// 中心揃えて重ねるので外枠幅*2 + グリッド線幅
+		var realOuterWidth = (float)(
+			outerBorderWidth * 2 + borderWidth
+		);
+		if (outerBorderWidth > 0)
+		{
+			//一番外側はDrawRectで描画
+			ctx.DrawRectangle(
+				new Vortice.Mathematics.Rect(
+					realOuterWidth / 2f,
+					realOuterWidth / 2f,
+					(float)width - realOuterWidth / 2f,
+					(float)height - realOuterWidth / 2f
+				),
+				outerBorderBrush,
+				realOuterWidth
+			);
+
+			// 縦線（列境界）
+			for (var c = 1; c < colCount; c++)
+			{
+				var x = c * cellWidth;
+				ctx.DrawLine(
+					new Vector2(x, 0f),
+					new Vector2(x, (float)height),
+					outerBorderBrush,
+					realOuterWidth
+				);
+			}
+			// 横線（行境界）
+			for (var r = 1; r < rowCount; r++)
+			{
+				var y = r * cellHeight;
+				ctx.DrawLine(
+					new Vector2(0f, y),
+					new Vector2((float)width, y),
+					outerBorderBrush,
+					realOuterWidth
+				);
+			}
+		}
+
+		// グリッド線（border）を一括描画
+		//  グリッド線（border）は外枠線の中心に描画されないとダメ
+		//  重ねるためにグリッド線描がの前に外枠線も同じように描画が必要
+		if (borderWidth > 0)
+		{
+			//一番外側はDrawRectで描画
+			// DrawLineだと角が欠ける
+			var margin = realOuterWidth / 2f;
+
+			ctx.DrawRectangle(
+				new Vortice.Mathematics.Rect(
+					margin,
+					margin,
+					(float)(width - margin * 2),
+					(float)(height - margin * 2)
+				),
+				borderBrush,
+				(float)borderWidth
+			);
+
+			// 縦線（列境界）
+			for (var c = 1; c < colCount; c++)
+			{
+				var x = c * cellWidth;
+				ctx.DrawLine(
+					new Vector2(x, margin),
+					new Vector2(x, (float)height - margin),
+					borderBrush,
+					(float)borderWidth
+				);
+			}
+			// 横線（行境界）
+			for (var r = 1; r < rowCount; r++)
+			{
+				var y = r * cellHeight;
+				ctx.DrawLine(
+					new Vector2(margin, y),
+					new Vector2((float)width - margin, y),
+					borderBrush,
+					(float)borderWidth
 				);
 			}
 		}
