@@ -80,6 +80,16 @@ internal class TableShapeSource : IShapeSource2
 			.Frame;
 		var fps = timelineItemSourceDescription.FPS;
 
+		var debugOuterBorderWidth =
+			Parameter.OuterBorderWidth.GetValue(
+				frame,
+				length,
+				fps
+			);
+		System.Diagnostics.Debug.WriteLine(
+			$"Update called: OuterBorderWidth={debugOuterBorderWidth}, _outerBorderWidth={_outerBorderWidth}"
+		);
+
 		var model =
 			Parameter.TableModel
 			?? throw new InvalidOperationException(
@@ -183,9 +193,15 @@ internal class TableShapeSource : IShapeSource2
 			&& _outerBorderColor == outerBorderColor
 		)
 		{
+			System.Diagnostics.Debug.WriteLine(
+				"Update: cache hit, skip redraw"
+			);
 			return;
 		}
 
+		System.Diagnostics.Debug.WriteLine(
+			"Update: cache miss, redraw"
+		);
 		var sw = System.Diagnostics.Stopwatch.StartNew();
 		// セルを描画する
 		DrawTableCells(
@@ -470,7 +486,14 @@ internal class TableShapeSource : IShapeSource2
 
 		ctx.EndDraw();
 		ctx.Target = null;
+
+		var closeSw =
+			System.Diagnostics.Stopwatch.StartNew();
 		commandList.Close();
+		closeSw.Stop();
+		System.Diagnostics.Debug.WriteLine(
+			$"commandList.Close() took {closeSw.ElapsedMilliseconds} ms"
+		);
 	}
 
 	//TODO: 行列の線ごとに制御点を作成する

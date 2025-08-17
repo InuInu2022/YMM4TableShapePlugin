@@ -206,6 +206,7 @@ internal class TableShapeParameter(
 			Width,
 			Height,
 			BorderWidth,
+			OuterBorderWidth,
 			RowCount,
 			ColumnCount,
 			.. TableModel.RowBoundaries,
