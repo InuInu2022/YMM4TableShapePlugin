@@ -384,38 +384,60 @@ internal class TableShapeSource : IShapeSource2
 					);
 				}
 
-				if (!string.IsNullOrEmpty(cell.Text))
+				//文字描画
+				if (string.IsNullOrEmpty(cell.Text))
 				{
-					using var dwFactory =
-						DWrite.DWriteCreateFactory<IDWriteFactory>(
-							Vortice
-								.DirectWrite
-								.FactoryType
-								.Shared
-						);
-					using var textFormat =
-						dwFactory.CreateTextFormat(
-							string.IsNullOrEmpty(cell.Font)
-								? fontName
-								: cell.Font,
-							fontSize
-						);
-
-					if (textFormat is not null)
-					{
-						ctx.DrawText(
-							cell.Text,
-							textFormat,
-							new Vortice.Mathematics.Rect(
-								(float)left + 4,
-								(float)top + 4,
-								(float)cellWidth - 8,
-								(float)cellHeight - 8
-							),
-							textBrush
-						);
-					}
+					continue;
 				}
+				using var dwFactory =
+					DWrite.DWriteCreateFactory<IDWriteFactory>(
+						Vortice
+							.DirectWrite
+							.FactoryType
+							.Shared
+					);
+				using var textFormat =
+					dwFactory.CreateTextFormat(
+						string.IsNullOrEmpty(cell.Font)
+							? fontName
+							: cell.Font,
+						fontSize
+					);
+
+				if (textFormat is null)
+				{
+					continue;
+				}
+				var padding = 4f;
+				var borderAndOuter =
+					(float)borderWidth
+					+ (float)outerBorderWidth;
+
+				ctx.DrawText(
+					cell.Text,
+					textFormat,
+					new Vortice.Mathematics.Rect(
+						(float)left
+							+ borderAndOuter
+							+ padding,
+						(float)top
+							+ borderAndOuter
+							+ padding,
+						Math.Max(
+							0,
+							(float)cellWidth
+								- (borderAndOuter + padding)
+									* 2
+						),
+						Math.Max(
+							0,
+							(float)cellHeight
+								- (borderAndOuter + padding)
+									* 2
+						)
+					),
+					textBrush
+				);
 			}
 		}
 
