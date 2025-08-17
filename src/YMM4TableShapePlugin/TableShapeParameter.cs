@@ -34,13 +34,13 @@ internal class TableShapeParameter(
 		new Animation(300, 0, 10000);
 
 	[Display(Name = "行数", Description = "テーブルの行数")]
-	[AnimationSlider("F0", "", 1, 50)]
+	[AnimationSlider("F0", "", 1, 5)]
 	[DefaultValue(1)]
 	[Range(1, 100)]
 	public Animation RowCount { get; } = new(1, 1, 100);
 
 	[Display(Name = "列数", Description = "テーブルの列数")]
-	[AnimationSlider("F0", "", 1, 50)]
+	[AnimationSlider("F0", "", 1, 5)]
 	[DefaultValue(1)]
 	[Range(1, 100)]
 	public Animation ColumnCount { get; } = new(1, 1, 100);

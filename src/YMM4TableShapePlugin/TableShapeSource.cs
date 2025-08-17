@@ -470,8 +470,8 @@ internal class TableShapeSource : IShapeSource2
 				new Vortice.Mathematics.Rect(
 					margin,
 					margin,
-					(float)(width - margin * 2),
-					(float)(height - margin * 2)
+					(float)(width - margin),
+					(float)(height - margin)
 				),
 				borderBrush,
 				(float)borderWidth
@@ -483,7 +483,7 @@ internal class TableShapeSource : IShapeSource2
 				var x = c * cellWidth;
 				ctx.DrawLine(
 					new Vector2(x, margin),
-					new Vector2(x, (float)height - margin),
+					new Vector2(x, (float)height),
 					borderBrush,
 					(float)borderWidth
 				);
@@ -494,7 +494,7 @@ internal class TableShapeSource : IShapeSource2
 				var y = r * cellHeight;
 				ctx.DrawLine(
 					new Vector2(margin, y),
-					new Vector2((float)width - margin, y),
+					new Vector2((float)width, y),
 					borderBrush,
 					(float)borderWidth
 				);
