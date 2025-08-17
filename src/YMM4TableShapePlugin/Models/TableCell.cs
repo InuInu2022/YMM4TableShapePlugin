@@ -39,15 +39,14 @@ public sealed class TableCell : Animatable, ICloneable
 	[RichTextEditor(
 		DecorationPropertyName = "Decorations",
 		FontPropertyName = "Font",
-		ForegroundPropertyName = "FontColor",
-		PropertyEditorSize = PropertyEditorSize.Normal
+		ForegroundPropertyName = "FontColor"
 	)]
 	public string Text
 	{
 		get => _text;
 		set
 		{
-			BeginEdit();
+			//BeginEdit();
 			Set(
 				ref _text,
 				value,
@@ -55,7 +54,7 @@ public sealed class TableCell : Animatable, ICloneable
 				"Label",
 				"Description"
 			);
-			EndEditAsync().AsTask().Wait();
+			//EndEditAsync().AsTask().Wait();
 		}
 	}
 	string _text = string.Empty;
@@ -117,7 +116,7 @@ public sealed class TableCell : Animatable, ICloneable
 
 	protected override IEnumerable<IAnimatable> GetAnimatables()
 	{
-		return [];
+		return [FontSize];
 	}
 
 	public object Clone()

@@ -81,6 +81,9 @@ internal class TableShapeSource : IShapeSource2
 			.Frame;
 		var fps = timelineItemSourceDescription.FPS;
 
+		var screen =
+			timelineItemSourceDescription.ScreenSize;
+
 		var debugOuterBorderWidth =
 			Parameter.OuterBorderWidth.GetValue(
 				frame,
