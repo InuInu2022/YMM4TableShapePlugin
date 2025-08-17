@@ -406,7 +406,16 @@ internal class TableShapeSource : IShapeSource2
 									* 2f
 						)
 					),
-					textBrush
+					cell?.FontColor is not null
+						? ctx.CreateSolidColorBrush(
+							new(
+								red: cell.FontColor.R,
+								green: cell.FontColor.G,
+								blue: cell.FontColor.B,
+								alpha: cell.FontColor.A
+							)
+						)
+						: textBrush
 				);
 			}
 		}
