@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Windows.Documents;
@@ -65,7 +66,7 @@ internal class TableShapeParameter(
 	[DefaultValue(1)]
 	[Range(0, 100000)]
 	public Animation OuterBorderWidth { get; } =
-		new(0, 1, 100000);
+		new(0, 0, 100000);
 
 	[Display(GroupName = "外観", Name = "枠の色")]
 	[ColorPicker]
@@ -83,7 +84,7 @@ internal class TableShapeParameter(
 		get => _outerBorderColor;
 		set => Set(ref _outerBorderColor, value);
 	}
-	private Color _outerBorderColor;
+	private Color _outerBorderColor = Colors.White;
 
 	[Display(GroupName = "外観", Name = "背景色")]
 	[ColorPicker]
@@ -132,7 +133,7 @@ internal class TableShapeParameter(
 		get => _headerRowBackgroundColor;
 		set => Set(ref _headerRowBackgroundColor, value);
 	}
-	Color _headerRowBackgroundColor;
+	Color _headerRowBackgroundColor = Colors.LightGray;
 
 	[Display(
 		GroupName = "外観/ヘッダー",
@@ -148,15 +149,22 @@ internal class TableShapeParameter(
 		get => _headerColumnBackgroundColor;
 		set => Set(ref _headerColumnBackgroundColor, value);
 	}
-	Color _headerColumnBackgroundColor;
+	Color _headerColumnBackgroundColor = Colors.LightGray;
 
 	#endregion header
 
 	[Display(AutoGenerateField = true)]
 	public TableModel TableModel { get; set; } = new(1, 1);
 
+	[Display(AutoGenerateField = true)]
+	public ImmutableList<Models.TableCell> Cells =>
+		[.. TableModel.Cells.SelectMany(c => c)];
+
 	public TableShapeParameter()
-		: this(null) { }
+		: this(null)
+	{
+		SubscribeChildUndoRedoable(Cells);
+	}
 
 	public override IEnumerable<string> CreateMaskExoFilter(
 		int keyFrameIndex,

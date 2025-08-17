@@ -1,6 +1,9 @@
 using System.ComponentModel.DataAnnotations;
+using System.Windows.Media;
+
 using YukkuriMovieMaker.Commons;
 using YukkuriMovieMaker.Controls;
+using YukkuriMovieMaker.Resources.Localization;
 
 namespace YMM4TableShapePlugin.Models;
 
@@ -26,14 +29,31 @@ namespace YMM4TableShapePlugin.Models;
 /// </property>
 public sealed class TableCell : Animatable
 {
-	[Display(GroupName = "", Name = "テキスト")]
-	[TextEditor(AcceptsReturn = true)]
-	public string Text { get; set; } = "";
+	[Display(GroupName = "セル", Name = "テキスト")]
+	//[TextEditor(AcceptsReturn = true)]
+	[RichTextEditor(
+		DecorationPropertyName = "Decorations",
+		FontPropertyName = "Font",
+		ForegroundPropertyName = "FontColor"
+	)]
+	public string Text
+	{
+		get => _text;
+		set =>
+			Set(
+				ref _text,
+				value,
+				"Text",
+				"Label",
+				"Description"
+			);
+	}
+	string _text = string.Empty;
 
 	[Display(
-		GroupName = "",
-		Name = "フォント",
-		Description = "項目の説明"
+		GroupName = "セル",
+		Name = nameof(Texts.TextItemFontName),
+		Description = nameof(Texts.TextItemFontDesc)
 	)]
 	[FontComboBox]
 	public string Font
@@ -42,6 +62,18 @@ public sealed class TableCell : Animatable
 		set => Set(ref _font, value);
 	}
 	string _font = "Yu Gothic UI";
+
+	[Display(
+		GroupName = "セル",
+		Name = nameof(Texts.TextItemFontColorName)
+	)]
+	[ColorPicker]
+	public Color FontColor
+	{
+		get => _fontColor;
+		set => Set(ref _fontColor, value);
+	}
+	private Color _fontColor = Colors.Black;
 
 	public required int Row { get; init; }
 	public required int Col { get; init; }
