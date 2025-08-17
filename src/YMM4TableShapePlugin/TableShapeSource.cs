@@ -503,14 +503,7 @@ internal class TableShapeSource : IShapeSource2
 
 		ctx.EndDraw();
 		ctx.Target = null;
-
-		var closeSw =
-			System.Diagnostics.Stopwatch.StartNew();
 		commandList.Close();
-		closeSw.Stop();
-		System.Diagnostics.Debug.WriteLine(
-			$"commandList.Close() took {closeSw.ElapsedMilliseconds} ms"
-		);
 	}
 
 	//TODO: 行列の線ごとに制御点を作成する
