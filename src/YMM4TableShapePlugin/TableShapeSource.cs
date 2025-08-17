@@ -186,6 +186,7 @@ internal class TableShapeSource : IShapeSource2
 			return;
 		}
 
+		var sw = System.Diagnostics.Stopwatch.StartNew();
 		// セルを描画する
 		DrawTableCells(
 			frame,
@@ -197,6 +198,11 @@ internal class TableShapeSource : IShapeSource2
 			bgColor,
 			borderColor,
 			outerBorderColor
+		);
+
+		sw.Stop();
+		System.Diagnostics.Debug.WriteLine(
+			$"DrawTableCells took {sw.ElapsedMilliseconds} ms"
 		);
 
 		//制御点を作成する
@@ -218,6 +224,10 @@ internal class TableShapeSource : IShapeSource2
 		_outerBorderWidth = outerBorderWidth;
 	}
 
+	ID2D1SolidColorBrush? cachedOuterBorderBrush;
+	Color? cachedOuterBorderColor;
+	float? cachedOuterBorderWidth;
+
 	[System.Diagnostics.CodeAnalysis.SuppressMessage(
 		"Usage",
 		"SMA0040:Missing Using Statement",
@@ -237,6 +247,33 @@ internal class TableShapeSource : IShapeSource2
 	{
 		var ctx = Devices.DeviceContext;
 
+		// outerBorderBrushキャッシュ（色・太さ変更時のみ再生成）
+		if (
+			cachedOuterBorderBrush is null
+			|| cachedOuterBorderColor != outerBorderColor
+			|| cachedOuterBorderWidth
+				!= (float)outerBorderWidth
+		)
+		{
+			disposer.RemoveAndDispose(
+				ref cachedOuterBorderBrush
+			);
+			cachedOuterBorderBrush =
+				ctx.CreateSolidColorBrush(
+					new(
+						outerBorderColor.R,
+						outerBorderColor.G,
+						outerBorderColor.B,
+						outerBorderColor.A
+					)
+				);
+			disposer.Collect(cachedOuterBorderBrush);
+			cachedOuterBorderColor = outerBorderColor;
+			cachedOuterBorderWidth =
+				(float)outerBorderWidth;
+		}
+
+		// 以降 cachedOuterBorderBrush を利用
 		if (commandList is not null)
 			disposer.RemoveAndDispose(ref commandList);
 		commandList = ctx.CreateCommandList();
@@ -253,14 +290,7 @@ internal class TableShapeSource : IShapeSource2
 				borderColor.A
 			)
 		);
-		var outerBorderBrush = ctx.CreateSolidColorBrush(
-			new(
-				outerBorderColor.R,
-				outerBorderColor.G,
-				outerBorderColor.B,
-				outerBorderColor.A
-			)
-		);
+		var outerBorderBrush = cachedOuterBorderBrush;
 		var textBrush = ctx.CreateSolidColorBrush(
 			new(0f, 0f, 0f, 1f)
 		);
@@ -352,10 +382,9 @@ internal class TableShapeSource : IShapeSource2
 					(float)borderWidth
 				);
 
-				// セル内側のouterBorder描画
+				// セル内側のouterBorder描画（borderの内側）
 				if (outerBorderWidth > 0)
 				{
-					// セルborderの内側にouterBorderを描画
 					var innerLeft =
 						(float)left
 						+ (float)borderWidth / 2;
@@ -384,11 +413,10 @@ internal class TableShapeSource : IShapeSource2
 					);
 				}
 
-				//文字描画
+				// 文字描画（枠線＋padding分だけ内側にオフセット）
 				if (string.IsNullOrEmpty(cell.Text))
-				{
 					continue;
-				}
+
 				using var dwFactory =
 					DWrite.DWriteCreateFactory<IDWriteFactory>(
 						Vortice
@@ -405,9 +433,8 @@ internal class TableShapeSource : IShapeSource2
 					);
 
 				if (textFormat is null)
-				{
 					continue;
-				}
+
 				var padding = 4f;
 				var borderAndOuter =
 					(float)borderWidth
