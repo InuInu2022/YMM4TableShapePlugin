@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Windows.Documents;
 using System.Windows.Media;
 
@@ -34,8 +35,8 @@ internal class TableShapeSource : IShapeSource2
 	readonly DisposeCollector disposer = new();
 
 	bool isFirst = true;
-	IList<Animation> _rowBoundaries = [];
-	IList<Animation> _columnBoundaries = [];
+	ImmutableList<Animation> _rowBoundaries = [];
+	ImmutableList<Animation> _columnBoundaries = [];
 	TableModel? _tableModel;
 	double? _borderWidth;
 	bool _disposedValue;
@@ -46,6 +47,8 @@ internal class TableShapeSource : IShapeSource2
 	private double _height;
 	private Color _borderColor;
 	private Color _backgroundColor;
+	private Color _outerBorderColor;
+	private double _outerBorderWidth;
 
 	public TableShapeSource(
 		IGraphicsDevicesAndContext devices,
@@ -139,6 +142,12 @@ internal class TableShapeSource : IShapeSource2
 			length,
 			fps
 		);
+		var outerBorderWidth =
+			Parameter.OuterBorderWidth.GetValue(
+				frame,
+				length,
+				fps
+			);
 
 		var row = (int)
 			Parameter.RowCount.GetValue(frame, length, fps);
@@ -152,6 +161,7 @@ internal class TableShapeSource : IShapeSource2
 
 		var bgColor = Parameter.BackgroundColor;
 		var borderColor = Parameter.BorderColor;
+		var outerBorderColor = Parameter.OuterBorderColor;
 
 		//変更がない場合は戻る
 		if (
@@ -169,6 +179,8 @@ internal class TableShapeSource : IShapeSource2
 			&& _height == height
 			&& _borderColor == borderColor
 			&& _backgroundColor == bgColor
+			&& _outerBorderWidth == outerBorderWidth
+			&& _outerBorderColor == outerBorderColor
 		)
 		{
 			return;
@@ -181,8 +193,10 @@ internal class TableShapeSource : IShapeSource2
 			fps,
 			model,
 			borderWidth,
+			outerBorderWidth,
 			bgColor,
-			borderColor
+			borderColor,
+			outerBorderColor
 		);
 
 		//制御点を作成する
@@ -200,6 +214,8 @@ internal class TableShapeSource : IShapeSource2
 		_height = height;
 		_borderColor = borderColor;
 		_backgroundColor = bgColor;
+		_outerBorderColor = outerBorderColor;
+		_outerBorderWidth = outerBorderWidth;
 	}
 
 	[System.Diagnostics.CodeAnalysis.SuppressMessage(
@@ -213,8 +229,10 @@ internal class TableShapeSource : IShapeSource2
 		int fps,
 		TableModel model,
 		double borderWidth,
+		double outerBorderWidth,
 		Color bgColor,
-		Color borderColor
+		Color borderColor,
+		Color outerBorderColor
 	)
 	{
 		var ctx = Devices.DeviceContext;
@@ -235,12 +253,21 @@ internal class TableShapeSource : IShapeSource2
 				borderColor.A
 			)
 		);
+		var outerBorderBrush = ctx.CreateSolidColorBrush(
+			new(
+				outerBorderColor.R,
+				outerBorderColor.G,
+				outerBorderColor.B,
+				outerBorderColor.A
+			)
+		);
 		var textBrush = ctx.CreateSolidColorBrush(
 			new(0f, 0f, 0f, 1f)
 		);
 		disposer.Collect(textBrush);
 		disposer.Collect(cellBgBrush);
 		disposer.Collect(borderBrush);
+		disposer.Collect(outerBorderBrush);
 
 		var fontName = "Yu Gothic UI";
 		var fontSize = 34;
@@ -249,7 +276,6 @@ internal class TableShapeSource : IShapeSource2
 		ctx.BeginDraw();
 		ctx.Clear(null);
 
-		// Width/Height/RowCount/ColumnCountを取得
 		var width = Parameter.Width.GetValue(
 			frame,
 			length,
@@ -269,7 +295,30 @@ internal class TableShapeSource : IShapeSource2
 				fps
 			);
 
-		// セル描画
+		// テーブル全体の外枠を描画
+		if (outerBorderWidth > 0)
+		{
+			ctx.DrawRectangle(
+				new Vortice.Mathematics.Rect(
+					-(float)outerBorderWidth / 2,
+					-(float)outerBorderWidth / 2,
+					(float)width + (float)outerBorderWidth,
+					(float)height + (float)outerBorderWidth
+				),
+				outerBorderBrush,
+				(float)outerBorderWidth
+			);
+		}
+
+		// セル描画領域を外枠分だけ内側にオフセット
+		var cellAreaLeft = outerBorderWidth;
+		var cellAreaTop = outerBorderWidth;
+		var cellAreaWidth = width - outerBorderWidth * 2;
+		var cellAreaHeight = height - outerBorderWidth * 2;
+
+		var cellWidth = cellAreaWidth / colCount;
+		var cellHeight = cellAreaHeight / rowCount;
+
 		for (var r = 0; r < rowCount; r++)
 		{
 			for (var c = 0; c < colCount; c++)
@@ -279,11 +328,8 @@ internal class TableShapeSource : IShapeSource2
 
 				var cell = model.Cells[r][c];
 
-				// 幅・高さを分割してセル座標・サイズを計算
-				var cellWidth = width / colCount;
-				var cellHeight = height / rowCount;
-				var left = c * cellWidth;
-				var top = r * cellHeight;
+				var left = cellAreaLeft + c * cellWidth;
+				var top = cellAreaTop + r * cellHeight;
 
 				ctx.FillRectangle(
 					new Vortice.Mathematics.Rect(
@@ -306,6 +352,38 @@ internal class TableShapeSource : IShapeSource2
 					(float)borderWidth
 				);
 
+				// セル内側のouterBorder描画
+				if (outerBorderWidth > 0)
+				{
+					// セルborderの内側にouterBorderを描画
+					var innerLeft =
+						(float)left
+						+ (float)borderWidth / 2;
+					var innerTop =
+						(float)top + (float)borderWidth / 2;
+					var innerWidth = Math.Max(
+						0,
+						(float)cellWidth
+							- (float)borderWidth
+					);
+					var innerHeight = Math.Max(
+						0,
+						(float)cellHeight
+							- (float)borderWidth
+					);
+
+					ctx.DrawRectangle(
+						new Vortice.Mathematics.Rect(
+							innerLeft,
+							innerTop,
+							innerWidth,
+							innerHeight
+						),
+						outerBorderBrush,
+						(float)outerBorderWidth
+					);
+				}
+
 				if (!string.IsNullOrEmpty(cell.Text))
 				{
 					using var dwFactory =
@@ -317,7 +395,9 @@ internal class TableShapeSource : IShapeSource2
 						);
 					using var textFormat =
 						dwFactory.CreateTextFormat(
-							fontName,
+							string.IsNullOrEmpty(cell.Font)
+								? fontName
+								: cell.Font,
 							fontSize
 						);
 

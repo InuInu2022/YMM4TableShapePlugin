@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using YukkuriMovieMaker.Commons;
+using YukkuriMovieMaker.Controls;
 
 namespace YMM4TableShapePlugin.Models;
 
@@ -22,10 +24,25 @@ namespace YMM4TableShapePlugin.Models;
 /// <property name="IsMergeRoot">
 /// このセルが結合セルグループのルート（複数行または複数列にまたがる）であるかどうかを示す値。
 /// </property>
-public record TableCell
+public sealed class TableCell : Animatable
 {
 	[Display(GroupName = "", Name = "テキスト")]
+	[TextEditor(AcceptsReturn = true)]
 	public string Text { get; set; } = "";
+
+	[Display(
+		GroupName = "",
+		Name = "フォント",
+		Description = "項目の説明"
+	)]
+	[FontComboBox]
+	public string Font
+	{
+		get => _font;
+		set => Set(ref _font, value);
+	}
+	string _font = "Yu Gothic UI";
+
 	public required int Row { get; init; }
 	public required int Col { get; init; }
 	public int RowSpan { get; set; } = 1;
@@ -36,4 +53,9 @@ public record TableCell
 
 	public bool IsMergedChild => ParentCell is not null;
 	public bool IsMergeRoot => RowSpan > 1 || ColSpan > 1;
+
+	protected override IEnumerable<IAnimatable> GetAnimatables()
+	{
+		return [];
+	}
 }

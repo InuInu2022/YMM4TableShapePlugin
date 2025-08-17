@@ -1,26 +1,38 @@
+using System.Collections.Immutable;
 using System.ComponentModel.DataAnnotations;
 
 using YukkuriMovieMaker.Commons;
 
 namespace YMM4TableShapePlugin.Models;
 
-public sealed record TableModel
+public sealed class TableModel : Animatable
 {
 	[Display(AutoGenerateField = true)]
-	public IList<Animation> RowBoundaries { get; set; } =
+	public ImmutableList<Animation> RowBoundaries
+	{
+		get => _rowBoundaries;
+		set => Set(ref _rowBoundaries, value);
+	}
+	ImmutableList<Animation> _rowBoundaries =
 		[
 			new(0f, BoundariesMin, BoundariesMax),
 			new(500f, BoundariesMin, BoundariesMax),
 		];
+
 	[Display(AutoGenerateField = true)]
-	public IList<Animation> ColumnBoundaries { get; set; } =
+	public ImmutableList<Animation> ColumnBoundaries
+	{
+		get => _columnBoundaries;
+		set => Set(ref _columnBoundaries, value);
+	}
+	ImmutableList<Animation> _columnBoundaries =
 		[
 			new(0f, BoundariesMin, BoundariesMax),
 			new(300f, BoundariesMin, BoundariesMax),
 		];
 
 	[Display(AutoGenerateField = true)]
-	public IList<IList<TableCell>> Cells
+	public ImmutableList<ImmutableList<TableCell>> Cells
 	{
 		get;
 		private set;
@@ -59,7 +71,9 @@ public sealed record TableModel
 
 	public void Resize(int rows, int cols)
 	{
-		var cellList = new List<IList<TableCell>>(rows);
+		var cellList = new List<ImmutableList<TableCell>>(
+			rows
+		);
 		for (int r = 0; r < rows; r++)
 		{
 			var rowList = new List<TableCell>(cols);
@@ -75,9 +89,9 @@ public sealed record TableModel
 						};
 				rowList.Add(cell);
 			}
-			cellList.Add(rowList);
+			cellList.Add([.. rowList]);
 		}
-		Cells = cellList;
+		Cells = [.. cellList];
 
 		ResetBoundaries(rows, cols);
 	}
@@ -85,12 +99,12 @@ public sealed record TableModel
 	// ResetBoundaries は、行・列数変更時に各境界値を初期化します。
 	private void ResetBoundaries(int rows, int cols)
 	{
-		RowBoundaries.Clear();
-		ColumnBoundaries.Clear();
+		_ = RowBoundaries.Clear();
+		_ = ColumnBoundaries.Clear();
 
 		for (int r = 0; r <= rows; r++)
 		{
-			RowBoundaries.Add(
+			_ = RowBoundaries.Add(
 				new(
 					r * DefaultRowHeight,
 					BoundariesMin,
@@ -101,7 +115,7 @@ public sealed record TableModel
 
 		for (int c = 0; c <= cols; c++)
 		{
-			ColumnBoundaries.Add(
+			_ = ColumnBoundaries.Add(
 				new(
 					c * DefaultColWidth,
 					BoundariesMin,
@@ -109,5 +123,15 @@ public sealed record TableModel
 				)
 			);
 		}
+	}
+
+	protected override IEnumerable<IAnimatable> GetAnimatables()
+	{
+		return
+		[
+			.. RowBoundaries,
+			.. ColumnBoundaries,
+			.. Cells.SelectMany(c => c),
+		];
 	}
 }
