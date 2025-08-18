@@ -9,10 +9,11 @@ using YukkuriMovieMaker.Commons;
 using YukkuriMovieMaker.Player.Video;
 using YukkuriMovieMaker.Plugin.Shape;
 using System.Numerics;
+using System.Diagnostics;
 
 namespace YMM4TableShapePlugin;
 
-internal class TableShapeSource : IShapeSource2
+internal partial class TableShapeSource : IShapeSource2
 {
 	public IEnumerable<VideoController> Controllers
 	{
@@ -84,14 +85,12 @@ internal class TableShapeSource : IShapeSource2
 		var screen =
 			timelineItemSourceDescription.ScreenSize;
 
-		var debugOuterBorderWidth =
-			Parameter.OuterBorderWidth.GetValue(
-				frame,
-				length,
-				fps
-			);
-		System.Diagnostics.Debug.WriteLine(
-			$"Update called: OuterBorderWidth={debugOuterBorderWidth}, _outerBorderWidth={_outerBorderWidth}"
+		DebugOuterBorderWidth(
+			frame,
+			length,
+			fps,
+			Parameter,
+			_outerBorderWidth
 		);
 
 		var model =
@@ -166,16 +165,16 @@ internal class TableShapeSource : IShapeSource2
 			&& _cellLists.SequenceEqual(cellLists)
 		)
 		{
-			System.Diagnostics.Debug.WriteLine(
+			Debug.WriteLine(
 				"Update: cache hit, skip redraw"
 			);
 			return;
 		}
 
-		System.Diagnostics.Debug.WriteLine(
+		Debug.WriteLine(
 			"Update: cache miss, redraw"
 		);
-		var sw = System.Diagnostics.Stopwatch.StartNew();
+		var sw = Stopwatch.StartNew();
 		// セルを描画する
 		DrawTableCells(
 			new TableRenderContext(
@@ -203,7 +202,7 @@ internal class TableShapeSource : IShapeSource2
 		);
 
 		sw.Stop();
-		System.Diagnostics.Debug.WriteLine(
+		Debug.WriteLine(
 			$"DrawTableCells took {sw.ElapsedMilliseconds} ms"
 		);
 
@@ -212,8 +211,8 @@ internal class TableShapeSource : IShapeSource2
 
 		//キャッシュ用の情報を保存しておく
 		isFirst = false;
-		_rowBoundaries = rBoundaries;
-		_columnBoundaries = cBoundaries;
+		_rowBoundaries = [.. rBoundaries.ToList()];
+		_columnBoundaries = [.. cBoundaries.ToList()];
 		_tableModel = model;
 		_borderWidth = borderWidth;
 		_row = row;
@@ -233,6 +232,7 @@ internal class TableShapeSource : IShapeSource2
 				.ToList(),
 		];
 	}
+
 
 	void UpdateBoundaryValues(
 		int frame,
@@ -504,6 +504,9 @@ internal class TableShapeSource : IShapeSource2
 		TableRenderContext ctx
 	)
 	{
+		//TODO: 右端と下端の背景ズレ修正
+		//TODO: セルのヘッダー列・行対応
+		//TODO: セルごとの背景色対応
 		var cellWidthBg =
 			(float)(ctx.Width - ctx.RealOuterWidth)
 			/ ctx.ColCount;
