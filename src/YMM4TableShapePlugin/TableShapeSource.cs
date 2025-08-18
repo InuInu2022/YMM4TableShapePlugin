@@ -10,6 +10,7 @@ using YukkuriMovieMaker.Player.Video;
 using YukkuriMovieMaker.Plugin.Shape;
 using System.Numerics;
 using System.Diagnostics;
+using Vortice.Mathematics;
 
 namespace YMM4TableShapePlugin;
 
@@ -269,7 +270,7 @@ internal partial class TableShapeSource : IShapeSource2
 	}
 
 	ID2D1SolidColorBrush? cachedOuterBorderBrush;
-	Color? cachedOuterBorderColor;
+	System.Windows.Media.Color? cachedOuterBorderColor;
 	float? cachedOuterBorderWidth;
 
 	[System.Diagnostics.CodeAnalysis.SuppressMessage(
@@ -492,13 +493,29 @@ internal partial class TableShapeSource : IShapeSource2
 				);
 
 				// 文字描画（枠線＋padding分だけ内側にオフセット）
-				if (string.IsNullOrEmpty(cell.Text))
-					continue;
-
 				var padding = 4f;
 				var borderAndOuter =
-					(float)ctx.BorderWidth
-					+ (float)ctx.OuterBorderWidth;
+					(float)(
+						ctx.BorderWidth
+						+ ctx.OuterBorderWidth
+					) / 2f;
+
+				var leftText =
+					left + borderAndOuter + padding;
+				var topText =
+					top + borderAndOuter + padding;
+				var widthText = MathF.Max(
+					0f,
+					cellWidthBg
+						- borderAndOuter * 2f
+						- padding * 2f
+				);
+				var heightText = MathF.Max(
+					0f,
+					cellHeightBg
+						- borderAndOuter * 2f
+						- padding * 2f
+				);
 
 				var fSize = (float)
 					cell.FontSize.GetValue(
@@ -515,24 +532,50 @@ internal partial class TableShapeSource : IShapeSource2
 						fSize > 0f ? fSize : DefaultFontSize
 					);
 
+				// 配置に応じてTextFormatのAlignmentを設定
+				textFormat.TextAlignment =
+					cell.TextAlign switch
+					{
+						CellContentAlign.TopLeft
+						or CellContentAlign.MiddleLeft
+						or CellContentAlign.BottomLeft =>
+							TextAlignment.Leading,
+						CellContentAlign.TopCenter
+						or CellContentAlign.MiddleCenter
+						or CellContentAlign.BottomCenter =>
+							TextAlignment.Center,
+						CellContentAlign.TopRight
+						or CellContentAlign.MiddleRight
+						or CellContentAlign.BottomRight =>
+							TextAlignment.Trailing,
+						_ => TextAlignment.Leading,
+					};
+				textFormat.ParagraphAlignment =
+					cell.TextAlign switch
+					{
+						CellContentAlign.TopLeft
+						or CellContentAlign.TopCenter
+						or CellContentAlign.TopRight =>
+							ParagraphAlignment.Near,
+						CellContentAlign.MiddleLeft
+						or CellContentAlign.MiddleCenter
+						or CellContentAlign.MiddleRight =>
+							ParagraphAlignment.Center,
+						CellContentAlign.BottomLeft
+						or CellContentAlign.BottomCenter
+						or CellContentAlign.BottomRight =>
+							ParagraphAlignment.Far,
+						_ => ParagraphAlignment.Near,
+					};
+
 				ctx.DeviceContext.DrawText(
 					cell.Text,
 					textFormat,
-					new Vortice.Mathematics.Rect(
-						left + borderAndOuter + padding,
-						top + borderAndOuter + padding,
-						MathF.Max(
-							0f,
-							cellWidthBg
-								- (borderAndOuter + padding)
-									* 2f
-						),
-						MathF.Max(
-							0f,
-							cellHeightBg
-								- (borderAndOuter + padding)
-									* 2f
-						)
+					new Rect(
+						leftText,
+						topText,
+						widthText,
+						heightText
 					),
 					ctx.DeviceContext!.CreateSolidColorBrush(
 						new(

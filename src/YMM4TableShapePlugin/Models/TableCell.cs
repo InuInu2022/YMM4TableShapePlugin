@@ -108,6 +108,8 @@ public sealed class TableCell
 	private Color _fontColor = Colors.Black;
 	private int _rowSpan = 1;
 	private int _colSpan = 1;
+	private CellContentAlign _textAlign =
+		CellContentAlign.MiddleCenter;
 
 	[Display(
 		GroupName = "セル",
@@ -139,6 +141,23 @@ public sealed class TableCell
 		{
 			BeginEdit();
 			Set(ref _colSpan, value);
+			EndEditAsync().AsTask().Wait();
+		}
+	}
+
+	[Display(
+		GroupName = "セル",
+		Name = "テキストの配置",
+		Description = ""
+	)]
+	[EnumComboBox]
+	public CellContentAlign TextAlign
+	{
+		get => _textAlign;
+		set
+		{
+			BeginEdit();
+			Set(ref _textAlign, value);
 			EndEditAsync().AsTask().Wait();
 		}
 	}

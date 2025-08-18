@@ -9,6 +9,7 @@ using YMM4TableShapePlugin.Models;
 using YukkuriMovieMaker.Commons;
 using YukkuriMovieMaker.Controls;
 using YukkuriMovieMaker.Exo;
+using YukkuriMovieMaker.ItemEditor.CustomVisibilityAttributes;
 using YukkuriMovieMaker.Player.Video;
 using YukkuriMovieMaker.Plugin.Shape;
 using YukkuriMovieMaker.Project;
@@ -99,6 +100,18 @@ internal class TableShapeParameter(
 
 	[Display(
 		GroupName = "外観/ヘッダー",
+		Name = "ヘッダー列強調"
+	)]
+	[EnumComboBox]
+	public ShowHeader HeaderDisplay
+	{
+		get { return _headerDisplay; }
+		set { Set(ref _headerDisplay, value); }
+	}
+	ShowHeader _headerDisplay = ShowHeader.None;
+
+	[Display(
+		GroupName = "外観/ヘッダー",
 		Name = "ヘッダー行"
 	)]
 	[ToggleSlider]
@@ -139,10 +152,10 @@ internal class TableShapeParameter(
 		Name = "ヘッダー列背景色"
 	)]
 	[ColorPicker]
-	//[ShowPropertyEditorWhen(
-	//	nameof(IsShowHeaderColumn),
-	//	false
-	//)]
+	[ShowPropertyEditorWhen(
+		nameof(HeaderDisplay),
+		ShowHeader.ColumnHeader | ShowHeader.BothHeader
+	)]
 	public Color HeaderColumnBackgroundColor
 	{
 		get => _headerColumnBackgroundColor;
