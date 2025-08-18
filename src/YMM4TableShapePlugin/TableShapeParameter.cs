@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using System.Diagnostics;
 using System.Windows.Documents;
 using System.Windows.Media;
 
@@ -153,7 +154,7 @@ internal class TableShapeParameter(
 
 	#endregion header
 
-	[Display(AutoGenerateField = true)]
+	[Display(AutoGenerateField = true)] //機能しない…
 	public TableModel TableModel { get; set; } = new(1, 1);
 
 	[Display(AutoGenerateField = true)]
@@ -209,6 +210,9 @@ internal class TableShapeParameter(
 
 	protected override IEnumerable<IAnimatable> GetAnimatables()
 	{
+		Debug.WriteLine(
+			$"GetAnimatables[{nameof(TableShapeParameter)}]"
+		);
 		return
 		[
 			Width,
@@ -218,9 +222,9 @@ internal class TableShapeParameter(
 			RowCount,
 			ColumnCount,
 			TableModel,
-			.. Cells,
-			.. TableModel.RowBoundaries,
-			.. TableModel.ColumnBoundaries,
+			//.. Cells,
+			//.. TableModel.RowBoundaries,
+			//.. TableModel.ColumnBoundaries,
 		];
 	}
 }

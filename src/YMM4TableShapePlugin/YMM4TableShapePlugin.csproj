@@ -41,4 +41,7 @@
       <CopyLocal>false</CopyLocal>
     </Reference>
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Epoxy.Wpf" Version="1.16.0" />
+  </ItemGroup>
 </Project>

@@ -52,6 +52,9 @@ internal partial class TableShapeSource : IShapeSource2
 	private Color _outerBorderColor;
 	private double _outerBorderWidth;
 
+	TableDrawCache? _lastDrawCache;
+	TableDrawCollections? _lastDrawCollections;
+
 	public TableShapeSource(
 		IGraphicsDevicesAndContext devices,
 		TableShapeParameter parameter
@@ -140,29 +143,34 @@ internal partial class TableShapeSource : IShapeSource2
 
 		var textLists = Parameter.Cells.Select(c => c.Text);
 		var cellLists = Parameter.Cells;
+
+		var currentCache = new TableDrawCache(
+			model,
+			borderWidth,
+			row,
+			col,
+			width,
+			height,
+			borderColor,
+			bgColor,
+			outerBorderWidth,
+			outerBorderColor
+		);
+		var currentListCache = new TableDrawCollections(
+			rBoundaries,
+			cBoundaries,
+			textLists,
+			cellLists
+		);
+
 		//変更がない場合は戻る
 		if (
 			commandList is not null
 			&& !isFirst
-			&& _tableModel == model
-			&& _rowBoundaries == rBoundaries
-			&& _columnBoundaries == cBoundaries
-			&& _rowBoundaries.SequenceEqual(rBoundaries)
-			&& _columnBoundaries.SequenceEqual(cBoundaries)
-			&& _borderWidth == borderWidth
-			&& _row == row
-			&& _col == col
-			&& _width == width
-			&& _height == height
-			&& _borderColor == borderColor
-			&& _backgroundColor == bgColor
-			&& _outerBorderWidth == outerBorderWidth
-			&& _outerBorderColor == outerBorderColor
-			&& _textLists.SequenceEqual(
-				textLists,
-				StringComparer.Ordinal
-			)
-			&& _cellLists.SequenceEqual(cellLists)
+			&& _lastDrawCache is not null
+			&& _lastDrawCache.Equals(currentCache)
+			&& _lastDrawCollections is not null
+			&& _lastDrawCollections.Equals(currentListCache)
 		)
 		{
 			Debug.WriteLine(
@@ -172,7 +180,7 @@ internal partial class TableShapeSource : IShapeSource2
 		}
 
 		Debug.WriteLine(
-			"Update: cache miss, redraw"
+			$"""Update: cache miss, redraw {1}"""
 		);
 		var sw = Stopwatch.StartNew();
 		// セルを描画する
@@ -211,8 +219,10 @@ internal partial class TableShapeSource : IShapeSource2
 
 		//キャッシュ用の情報を保存しておく
 		isFirst = false;
-		_rowBoundaries = [.. rBoundaries.ToList()];
-		_columnBoundaries = [.. cBoundaries.ToList()];
+
+		/*
+		_rowBoundaries = rBoundaries; //[.. rBoundaries.ToList()];
+		_columnBoundaries = cBoundaries; //[.. cBoundaries.ToList()];
 		_tableModel = model;
 		_borderWidth = borderWidth;
 		_row = row;
@@ -223,14 +233,19 @@ internal partial class TableShapeSource : IShapeSource2
 		_backgroundColor = bgColor;
 		_outerBorderColor = outerBorderColor;
 		_outerBorderWidth = outerBorderWidth;
-		_textLists = [.. textLists.ToList()];
-		_cellLists =
+		_textLists = textLists; //[.. textLists.ToList()];
+		_cellLists = cellLists;
+		*/
+
+		_lastDrawCache = currentCache;
+		_lastDrawCollections = currentListCache;
+		/*_cellLists =
 		[
 			.. cellLists
 				.Select(c => c.Clone() as Models.TableCell)
 				.OfType<Models.TableCell>()
 				.ToList(),
-		];
+		];*/
 	}
 
 
@@ -472,31 +487,6 @@ internal partial class TableShapeSource : IShapeSource2
 		commandList.Close();
 	}
 
-	/// <summary>
-	/// テーブル描画に必要なパラメータをまとめた構造体
-	/// </summary>
-	readonly record struct TableRenderContext(
-		int Frame,
-		int Length,
-		int Fps,
-		TableModel Model,
-		double BorderWidth,
-		double OuterBorderWidth,
-		ID2D1DeviceContext6 DeviceContext,
-		ID2D1SolidColorBrush? CellBackgroundBrush,
-		ID2D1SolidColorBrush? TextBrush,
-		IDWriteFactory? WriteFactory,
-		double Width,
-		double Height,
-		int RowCount,
-		int ColCount,
-		float RealOuterWidth,
-		float OuterMargin,
-		Color BackgroundColor,
-		Color BorderColor,
-		Color OuterBorderColor
-	);
-
 	const string DefaultFontName = "Yu Gothic UI";
 	const float DefaultFontSize = 34f;
 
@@ -666,9 +656,9 @@ internal partial class TableShapeSource : IShapeSource2
 			{
 				disposer.DisposeAndClear();
 			}
-			_rowBoundaries = [];
-			_columnBoundaries = [];
-			_tableModel = null;
+			//_rowBoundaries = [];
+			//_columnBoundaries = [];
+			//_tableModel = null;
 			_disposedValue = true;
 		}
 	}

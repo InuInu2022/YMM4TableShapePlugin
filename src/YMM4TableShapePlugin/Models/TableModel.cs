@@ -1,7 +1,21 @@
 using System.Collections.Immutable;
 using System.ComponentModel.DataAnnotations;
+using System.Diagnostics;
+using System.Diagnostics;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.CodeAnalysis;
+using System.Windows.Threading;
+using Epoxy;
 
 using YukkuriMovieMaker.Commons;
+using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics;
 
 namespace YMM4TableShapePlugin.Models;
 
@@ -31,22 +45,24 @@ public sealed class TableModel : Animatable
 			new(300f, BoundariesMin, BoundariesMax),
 		];
 
+
 	[Display(AutoGenerateField = true)]
 	public ImmutableList<ImmutableList<TableCell>> Cells
 	{
-		get;
-		private set;
-	} =
+		get => _cells;
+		set => Set(ref _cells, value);
+	}
+	ImmutableList<ImmutableList<TableCell>> _cells =
+	[
 		[
-			[
-				new TableCell
-				{
-					Row = 1,
-					Col = 1,
-					Text = "text",
-				},
-			],
-		];
+			new TableCell
+			{
+				Row = 1,
+				Col = 1,
+				Text = "text",
+			},
+		],
+	];
 
 	public int Rows => Cells.Count;
 	public int Cols => Cells.FirstOrDefault()?.Count ?? 0;
@@ -69,8 +85,29 @@ public sealed class TableModel : Animatable
 		Resize(rows, cols);
 	}
 
+	[System.Diagnostics.CodeAnalysis.SuppressMessage(
+		"Usage",
+		"VSTHRD001:Avoid legacy thread switching APIs",
+		Justification = "<保留中>"
+	)]
+	[System.Diagnostics.CodeAnalysis.SuppressMessage(
+		"Usage",
+		"VSTHRD002:Avoid problematic synchronous waits",
+		Justification = "<保留中>"
+	)]
+	[System.Diagnostics.CodeAnalysis.SuppressMessage(
+		"Correctness",
+		"SS034:Use await to get the result of an asynchronous operation",
+		Justification = "<保留中>"
+	)]
 	public void Resize(int rows, int cols)
 	{
+		if (rows == Rows && cols == Cols)
+		{
+			// サイズが変更されていない場合は何もしない
+			return;
+		}
+
 		var cellList = new List<ImmutableList<TableCell>>(
 			rows
 		);
@@ -91,9 +128,60 @@ public sealed class TableModel : Animatable
 			}
 			cellList.Add([.. rowList]);
 		}
-		Cells = [.. cellList];
+		BeginEdit();
+
+		if (IsCurrentThreadUI())
+		{
+			Cells = [.. cellList];
+		}
+		else
+		{
+			UIThread
+				.InvokeAsync(() =>
+				{
+					Cells = [.. cellList];
+					return default;
+				})
+				.AsTask()
+				.Wait();
+		}
 
 		ResetBoundaries(rows, cols);
+		EndEditAsync().AsTask().Wait();
+	}
+
+	[SuppressMessage(
+		"Roslynator",
+		"RCS1179:Unnecessary assignment",
+		Justification = "<保留中>"
+	)]
+	[SuppressMessage(
+		"Usage",
+		"VSTHRD002:Avoid problematic synchronous waits",
+		Justification = "<保留中>"
+	)]
+	[SuppressMessage(
+		"Correctness",
+		"SS034:Use await to get the result of an asynchronous operation",
+		Justification = "<保留中>"
+	)]
+	private static bool IsCurrentThreadUI()
+	{
+		var isUIThreadTask = UIThread.IsBoundAsync();
+		bool isUIThread;
+		if (isUIThreadTask.IsCompletedSuccessfully)
+		{
+			isUIThread = isUIThreadTask.Result;
+		}
+		else
+		{
+			isUIThread = isUIThreadTask
+				.AsTask()
+				.GetAwaiter()
+				.GetResult();
+		}
+
+		return isUIThread;
 	}
 
 	// ResetBoundaries は、行・列数変更時に各境界値を初期化します。
@@ -127,6 +215,9 @@ public sealed class TableModel : Animatable
 
 	protected override IEnumerable<IAnimatable> GetAnimatables()
 	{
+		Debug.WriteLine(
+			$"GetAnimatables[{nameof(TableModel)}]: {RowBoundaries.Count} rows, {ColumnBoundaries.Count} columns"
+		);
 		return
 		[
 			.. RowBoundaries,
