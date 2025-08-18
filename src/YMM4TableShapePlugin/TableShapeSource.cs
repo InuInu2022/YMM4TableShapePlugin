@@ -37,20 +37,8 @@ internal partial class TableShapeSource : IShapeSource2
 	readonly DisposeCollector disposer = new();
 
 	bool isFirst = true;
-	ImmutableList<Animation> _rowBoundaries = [];
-	ImmutableList<Animation> _columnBoundaries = [];
-	TableModel? _tableModel;
-	double? _borderWidth;
 	bool _disposedValue;
 	ID2D1CommandList? commandList;
-	private int _row;
-	private int _col;
-	private double _width;
-	private double _height;
-	private Color _borderColor;
-	private Color _backgroundColor;
-	private Color _outerBorderColor;
-	private double _outerBorderWidth;
 
 	TableDrawCache? _lastDrawCache;
 	TableDrawCollections? _lastDrawCollections;
@@ -87,14 +75,6 @@ internal partial class TableShapeSource : IShapeSource2
 
 		var screen =
 			timelineItemSourceDescription.ScreenSize;
-
-		DebugOuterBorderWidth(
-			frame,
-			length,
-			fps,
-			Parameter,
-			_outerBorderWidth
-		);
 
 		var model =
 			Parameter.TableModel
@@ -145,16 +125,20 @@ internal partial class TableShapeSource : IShapeSource2
 		var cellLists = Parameter.Cells;
 
 		var currentCache = new TableDrawCache(
-			model,
-			borderWidth,
-			row,
-			col,
-			width,
-			height,
-			borderColor,
-			bgColor,
-			outerBorderWidth,
-			outerBorderColor
+			Model: model,
+			Row: row,
+			Col: col,
+			Width: width,
+			Height: height,
+			BackgroundColor: bgColor,
+			BorderColor: borderColor,
+			BorderWidth: borderWidth,
+			OuterBorderWidth: outerBorderWidth,
+			OuterBorderColor: outerBorderColor,
+			IsShowHeaderRow: Parameter.IsShowHeaderRow,
+			HeaderRowBackgroundColor: Parameter.HeaderRowBackgroundColor,
+			IsShowHeaderColumn: Parameter.IsShowHeaderColumn,
+			HeaderColumnBackgroundColor: Parameter.HeaderColumnBackgroundColor
 		);
 		var currentListCache = new TableDrawCollections(
 			rBoundaries,
@@ -219,33 +203,8 @@ internal partial class TableShapeSource : IShapeSource2
 
 		//キャッシュ用の情報を保存しておく
 		isFirst = false;
-
-		/*
-		_rowBoundaries = rBoundaries; //[.. rBoundaries.ToList()];
-		_columnBoundaries = cBoundaries; //[.. cBoundaries.ToList()];
-		_tableModel = model;
-		_borderWidth = borderWidth;
-		_row = row;
-		_col = col;
-		_width = width;
-		_height = height;
-		_borderColor = borderColor;
-		_backgroundColor = bgColor;
-		_outerBorderColor = outerBorderColor;
-		_outerBorderWidth = outerBorderWidth;
-		_textLists = textLists; //[.. textLists.ToList()];
-		_cellLists = cellLists;
-		*/
-
 		_lastDrawCache = currentCache;
 		_lastDrawCollections = currentListCache;
-		/*_cellLists =
-		[
-			.. cellLists
-				.Select(c => c.Clone() as Models.TableCell)
-				.OfType<Models.TableCell>()
-				.ToList(),
-		];*/
 	}
 
 
@@ -312,8 +271,6 @@ internal partial class TableShapeSource : IShapeSource2
 	ID2D1SolidColorBrush? cachedOuterBorderBrush;
 	Color? cachedOuterBorderColor;
 	float? cachedOuterBorderWidth;
-	IEnumerable<string> _textLists = [];
-	ImmutableList<Models.TableCell> _cellLists = [];
 
 	[System.Diagnostics.CodeAnalysis.SuppressMessage(
 		"Usage",

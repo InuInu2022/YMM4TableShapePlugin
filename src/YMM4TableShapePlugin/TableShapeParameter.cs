@@ -2,18 +2,16 @@ using System.Collections.Immutable;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
-using System.Windows.Documents;
 using System.Windows.Media;
 
 using YMM4TableShapePlugin.Models;
+
 using YukkuriMovieMaker.Commons;
 using YukkuriMovieMaker.Controls;
 using YukkuriMovieMaker.Exo;
-using YukkuriMovieMaker.ItemEditor.CustomVisibilityAttributes;
 using YukkuriMovieMaker.Player.Video;
 using YukkuriMovieMaker.Plugin.Shape;
 using YukkuriMovieMaker.Project;
-using YukkuriMovieMaker.UndoRedo;
 
 namespace YMM4TableShapePlugin;
 
@@ -222,7 +220,7 @@ internal class TableShapeParameter(
 			RowCount,
 			ColumnCount,
 			TableModel,
-			//.. Cells,
+			.. Cells,
 			//.. TableModel.RowBoundaries,
 			//.. TableModel.ColumnBoundaries,
 		];

@@ -33,7 +33,11 @@ internal partial class TableShapeSource
 		Color BorderColor,
 		Color BackgroundColor,
 		double OuterBorderWidth,
-		Color OuterBorderColor
+		Color OuterBorderColor,
+		bool IsShowHeaderRow,
+		Color HeaderRowBackgroundColor,
+		bool IsShowHeaderColumn,
+		Color HeaderColumnBackgroundColor
 	);
 
 	/// <summary>

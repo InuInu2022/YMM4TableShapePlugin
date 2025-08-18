@@ -1,25 +1,17 @@
 using System.Collections.Immutable;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
-using System.Diagnostics;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Diagnostics.CodeAnalysis;
-using System.Diagnostics.CodeAnalysis;
-using System.Diagnostics.CodeAnalysis;
-using System.Diagnostics.CodeAnalysis;
-using System.Diagnostics.CodeAnalysis;
-using System.Diagnostics.CodeAnalysis;
-using System.Windows.Threading;
+
 using Epoxy;
 
 using YukkuriMovieMaker.Commons;
-using System.Diagnostics.CodeAnalysis;
-using System.Diagnostics;
 
 namespace YMM4TableShapePlugin.Models;
 
-public sealed class TableModel : Animatable
+public sealed class TableModel
+	: Animatable,
+		IEquatable<TableModel>
 {
 	[Display(AutoGenerateField = true)]
 	public ImmutableList<Animation> RowBoundaries
@@ -50,7 +42,12 @@ public sealed class TableModel : Animatable
 	public ImmutableList<ImmutableList<TableCell>> Cells
 	{
 		get => _cells;
-		set => Set(ref _cells, value);
+		set
+		{
+			BeginEdit();
+			Set(ref _cells, value);
+			EndEditAsync().AsTask().Wait();
+		}
 	}
 	ImmutableList<ImmutableList<TableCell>> _cells =
 	[
@@ -224,5 +221,54 @@ public sealed class TableModel : Animatable
 			.. ColumnBoundaries,
 			.. Cells.SelectMany(c => c),
 		];
+	}
+
+	[SuppressMessage(
+		"Usage",
+		"SMA0028:Invalid Enum-like Pattern",
+		Justification = "<保留中>"
+	)]
+	public bool Equals(TableModel? other)
+	{
+		if (other is null)
+		{
+			return false;
+		}
+
+		return Cols == other.Cols
+			&& Rows == other.Rows
+			&& Cells.SequenceEqual(other.Cells)
+			&& RowBoundaries.SequenceEqual(
+				other.RowBoundaries
+			)
+			&& ColumnBoundaries.SequenceEqual(
+				other.ColumnBoundaries
+			);
+	}
+
+	[SuppressMessage(
+		"Usage",
+		"SMA0028:Invalid Enum-like Pattern",
+		Justification = "<保留中>"
+	)]
+	public override bool Equals(object? obj)
+	{
+		return Equals(obj as TableModel);
+	}
+
+	[SuppressMessage(
+		"Correctness",
+		"SS008:GetHashCode() refers to mutable or static member",
+		Justification = "<保留中>"
+	)]
+	public override int GetHashCode()
+	{
+		return HashCode.Combine(
+			Cols,
+			Rows,
+			Cells,
+			RowBoundaries,
+			ColumnBoundaries
+		);
 	}
 }

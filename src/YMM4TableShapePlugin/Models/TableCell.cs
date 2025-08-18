@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Windows.Media;
 
 using YukkuriMovieMaker.Commons;
@@ -30,7 +31,10 @@ namespace YMM4TableShapePlugin.Models;
 /// <property name="IsMergeRoot">
 /// このセルが結合セルグループのルート（複数行または複数列にまたがる）であるかどうかを示す値。
 /// </property>
-public sealed class TableCell : Animatable, ICloneable
+public sealed class TableCell
+	: Animatable,
+		ICloneable,
+		IEquatable<TableCell>
 {
 	[Display(GroupName = "セル", Name = "テキスト")]
 	/*[TextEditor(
@@ -76,7 +80,12 @@ public sealed class TableCell : Animatable, ICloneable
 	public string Font
 	{
 		get => _font;
-		set => Set(ref _font, value);
+		set
+		{
+			BeginEdit();
+			Set(ref _font, value);
+			EndEditAsync().AsTask().Wait();
+		}
 	}
 	string _font = "Yu Gothic UI";
 
@@ -89,9 +98,16 @@ public sealed class TableCell : Animatable, ICloneable
 	public Color FontColor
 	{
 		get => _fontColor;
-		set => Set(ref _fontColor, value);
+		set
+		{
+			BeginEdit();
+			Set(ref _fontColor, value);
+			EndEditAsync().AsTask().Wait();
+		}
 	}
 	private Color _fontColor = Colors.Black;
+	private int _rowSpan = 1;
+	private int _colSpan = 1;
 
 	[Display(
 		GroupName = "セル",
@@ -106,10 +122,27 @@ public sealed class TableCell : Animatable, ICloneable
 
 	public required int Row { get; init; }
 	public required int Col { get; init; }
-	public int RowSpan { get; set; } = 1;
-	public int ColSpan { get; set; } = 1;
+	public int RowSpan
+	{
+		get { return _rowSpan; }
+		set
+		{
+			BeginEdit();
+			Set(ref _rowSpan, value);
+			EndEditAsync().AsTask().Wait();
+		}
+	}
+	public int ColSpan
+	{
+		get { return _colSpan; }
+		set
+		{
+			BeginEdit();
+			Set(ref _colSpan, value);
+			EndEditAsync().AsTask().Wait();
+		}
+	}
 
-	// 結合セルの代表（親）を指す
 	public TableCell? ParentCell { get; set; }
 
 	public bool IsMergedChild => ParentCell is not null;
@@ -133,5 +166,54 @@ public sealed class TableCell : Animatable, ICloneable
 			FontColor = FontColor,
 			Text = Text,
 		};
+	}
+
+	public bool Equals(TableCell? other)
+	{
+		if (other is null)
+		{
+			return false;
+		}
+
+		return Col == other.Col
+			&& Row == other.Row
+			&& RowSpan == other.RowSpan
+			&& ColSpan == other.ColSpan
+			&& ParentCell?.Equals(other.ParentCell) is true
+			&& string.Equals(
+				Font,
+				other.Font,
+				StringComparison.OrdinalIgnoreCase
+			)
+			&& FontColor == other.FontColor
+			&& string.Equals(
+				Text,
+				other.Text,
+				StringComparison.Ordinal
+			);
+	}
+
+	public override bool Equals(object? obj)
+	{
+		return Equals(obj as TableCell);
+	}
+
+	[SuppressMessage(
+		"Correctness",
+		"SS008:GetHashCode() refers to mutable or static member",
+		Justification = "<保留中>"
+	)]
+	public override int GetHashCode()
+	{
+		return HashCode.Combine(
+			Col,
+			Row,
+			RowSpan,
+			ColSpan,
+			ParentCell,
+			Font,
+			FontColor,
+			Text
+		);
 	}
 }
