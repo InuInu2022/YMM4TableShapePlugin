@@ -46,7 +46,7 @@ public sealed class TableCell : Animatable, ICloneable
 		get => _text;
 		set
 		{
-			//BeginEdit();
+			BeginEdit();
 			Set(
 				ref _text,
 				value,
@@ -54,7 +54,7 @@ public sealed class TableCell : Animatable, ICloneable
 				"Label",
 				"Description"
 			);
-			//EndEditAsync().AsTask().Wait();
+			EndEditAsync().AsTask().Wait();
 		}
 	}
 	string _text = string.Empty;
