@@ -452,9 +452,6 @@ internal partial class TableShapeSource : IShapeSource2
 		TableRenderContext ctx
 	)
 	{
-		//TODO: 右端と下端の背景ズレ修正
-		//TODO: セルのヘッダー列・行対応
-		//TODO: セルごとの背景色対応
 		var cellWidthBg =
 			(float)(ctx.Width - ctx.RealOuterWidth)
 			/ ctx.ColCount;
@@ -492,7 +489,6 @@ internal partial class TableShapeSource : IShapeSource2
 					ctx.CellBackgroundBrush!
 				);
 
-				// 文字描画（枠線＋padding分だけ内側にオフセット）
 				var padding = 4f;
 				var borderAndOuter =
 					(float)(
@@ -517,6 +513,17 @@ internal partial class TableShapeSource : IShapeSource2
 						- padding * 2f
 				);
 
+				var rightText = leftText + widthText;
+				var bottomText = topText + heightText;
+				var rightCell = left + cellWidthBg;
+				var bottomCell = top + cellHeightBg;
+
+				// 端ごとのギャップ計算
+				var leftGap = leftText - left;
+				var rightGap = rightCell - rightText;
+				var topGap = topText - top;
+				var bottomGap = bottomText - bottomCell;
+
 				var fSize = (float)
 					cell.FontSize.GetValue(
 						ctx.Frame,
@@ -532,7 +539,6 @@ internal partial class TableShapeSource : IShapeSource2
 						fSize > 0f ? fSize : DefaultFontSize
 					);
 
-				// 配置に応じてTextFormatのAlignmentを設定
 				textFormat.TextAlignment =
 					cell.TextAlign switch
 					{
@@ -567,6 +573,14 @@ internal partial class TableShapeSource : IShapeSource2
 							ParagraphAlignment.Far,
 						_ => ParagraphAlignment.Near,
 					};
+
+				// 位置ごとのギャップも含めてデバッグ出力
+				Debug.WriteLine(
+					$"Cell[{r},{c}] Text=\"{cell.Text}\" Align={cell.TextAlign} "
+						+ $"Rect=({leftText},{topText},{widthText},{heightText}) CellRect=({left},{top},{cellWidthBg},{cellHeightBg}) "
+						+ $"Gaps: left={leftGap}, right={rightGap}, top={topGap}, bottom={bottomGap} "
+						+ $"TextAlignment={textFormat.TextAlignment} ParagraphAlignment={textFormat.ParagraphAlignment} FontSize={fSize}"
+				);
 
 				ctx.DeviceContext.DrawText(
 					cell.Text,
