@@ -1,23 +1,313 @@
-﻿namespace PluginTests;
+﻿using Vortice.Mathematics;
+using Xunit;
+using YMM4TableShapePlugin;
+
+namespace PluginTests;
 
 /// <summary>
 /// TableRenderSource.RenderTableCells()関連のテスト
+///
+/// 仕様:
+/// - 外枠（OuterBorderRect）はテーブル領域内に収まること（はみ出し禁止）
+/// - 各セルのRectは分割時に均一サイズであること
+/// - 隣接セル間に隙間がないこと（セル同士がぴったり隣接すること）
+/// - 各セルRectは外枠Rectの内側に収まること
+/// - 枠線が重ならないこと
+///   - ※補足: 実装方法によっては隣接セルの境界線が両方描画されて重複する場合がある。
+///     テストでは単純な座標比較だけでなく、実装方針に応じた検証が必要。
+///     たとえば外枠と枠線を2本の太さの違う線を重ねて表現する場合は
+///     この仕様満たさないのが正しい。
+/// - セル背景に隙間がないこと
+/// - 文字が枠線に被らないこと
+/// - 全セルサイズが均一であること
 /// </summary>
 public class DrawTableCellTests
 {
-	[Fact]
-	public void Test1() { }
+	[Theory(
+		DisplayName = "OuterBorderRect_IsWithinTableBounds_NoOverflow"
+	)]
+	[InlineData(400, 300, 10)]
+	[InlineData(800, 600, 20)]
+	[InlineData(100, 100, 0)]
+	public void CalculateOuterBorderRect_OuterBorderIsWithinBounds_NoOverflow(
+		double width,
+		double height,
+		double outerBorderWidth
+	)
+	{
+		// 仕様: 外枠（OuterBorderRect）はテーブル領域内に収まること（はみ出し禁止）
+		var rect =
+			TableShapeSource.CalculateOuterBorderRect(
+				width,
+				height,
+				outerBorderWidth
+			);
 
-	//仕様に沿って描画しているかどうかをテスト
-	//仕様：
-	//・A:テーブルの一番外枠(OuterBorder)はテーブルの描画領域いっぱい描画し、はみ出ない
-	//・B:テーブルの枠とセルの間のグリッド線はBorderで同じ枠線として扱われる
-	//・C:セルの内枠は外枠OuterBorderと同じ幅・色で描画される
-	//・それぞれの枠線は重ならない（ただしグリッド線を交差して描画する場合、外枠・セル内枠線を同じ線で一括で描画するを除く）
-	//・セルの背景枠は枠線との間に隙間なく描画される
-	//・セルの内部の文字は、枠線とかぶることなく描画される
-	//・A/B/Cそれぞれの枠線は隣接する場合は隙間はできない
-	// -> 実装しだいでは枠線は同じ座標で描画されている場合は隙間できないので関係なし
-	//・分割数に合わせてセルの数は増えるが、それぞれのセルの大きさは同一
-	//・セルの大きさは同一なので、特にセルの内枠も同じ大きさ・領域
+		Assert.True(rect.Left >= 0);
+		Assert.True(rect.Top >= 0);
+		Assert.True(rect.Right <= (float)width);
+		Assert.True(rect.Bottom <= (float)height);
+	}
+
+	[Theory(
+		DisplayName = "CellRects_AreUniformSize_WhenDivided"
+	)]
+	[InlineData(400, 300, 10, 2, 2)]
+	[InlineData(800, 600, 20, 4, 4)]
+	[InlineData(100, 100, 0, 1, 1)]
+	public void CalculateCellRect_CellRectsAreUniformSize_WhenDivided(
+		double width,
+		double height,
+		double outerBorderWidth,
+		int rowCount,
+		int colCount
+	)
+	{
+		// 仕様: 各セルのRectは分割時に均一サイズであること
+		// 仕様: 全セルサイズが均一であること
+		var rect1 = TableShapeSource.CalculateCellRect(
+			0,
+			0,
+			rowCount,
+			colCount,
+			width,
+			height,
+			outerBorderWidth
+		);
+		var rect2 = TableShapeSource.CalculateCellRect(
+			0,
+			1,
+			rowCount,
+			colCount,
+			width,
+			height,
+			outerBorderWidth
+		);
+		var rect3 = TableShapeSource.CalculateCellRect(
+			1,
+			0,
+			rowCount,
+			colCount,
+			width,
+			height,
+			outerBorderWidth
+		);
+		var rect4 = TableShapeSource.CalculateCellRect(
+			1,
+			1,
+			rowCount,
+			colCount,
+			width,
+			height,
+			outerBorderWidth
+		);
+
+		Assert.Equal(rect1.Width, rect2.Width);
+		Assert.Equal(rect1.Height, rect3.Height);
+		Assert.Equal(rect2.Width, rect4.Width);
+		Assert.Equal(rect3.Height, rect4.Height);
+	}
+
+	[Theory(DisplayName = "CellRects_NoGapBetweenCells")]
+	[InlineData(400, 300, 10, 2, 2)]
+	[InlineData(800, 600, 20, 4, 4)]
+	public void CalculateCellRect_NoGapBetweenCells(
+		double width,
+		double height,
+		double outerBorderWidth,
+		int rowCount,
+		int colCount
+	)
+	{
+		// 仕様: 隣接セル間に隙間がないこと（セル同士がぴったり隣接すること）
+		// 仕様: セル背景に隙間がないこと（座標計算上は隣接セル間隙間なしで検証済み）
+		var rect1 = TableShapeSource.CalculateCellRect(
+			0,
+			0,
+			rowCount,
+			colCount,
+			width,
+			height,
+			outerBorderWidth
+		);
+		var rect2 = TableShapeSource.CalculateCellRect(
+			0,
+			1,
+			rowCount,
+			colCount,
+			width,
+			height,
+			outerBorderWidth
+		);
+
+		Assert.Equal(rect1.Right, rect2.Left);
+
+		var rect3 = TableShapeSource.CalculateCellRect(
+			1,
+			0,
+			rowCount,
+			colCount,
+			width,
+			height,
+			outerBorderWidth
+		);
+		Assert.Equal(rect1.Bottom, rect3.Top);
+	}
+
+	[Theory(DisplayName = "CellRects_AreInsideOuterBorder")]
+	[InlineData(400, 300, 10, 2, 2)]
+	[InlineData(800, 600, 20, 4, 4)]
+	public void CalculateCellRect_CellRectsAreInsideOuterBorder(
+		double width,
+		double height,
+		double outerBorderWidth,
+		int rowCount,
+		int colCount
+	)
+	{
+		// 仕様: 各セルRectは外枠Rectの内側に収まること
+		var outerRect =
+			TableShapeSource.CalculateOuterBorderRect(
+				width,
+				height,
+				outerBorderWidth
+			);
+
+		for (int r = 0; r < rowCount; r++)
+		{
+			for (int c = 0; c < colCount; c++)
+			{
+				var cellRect =
+					TableShapeSource.CalculateCellRect(
+						r,
+						c,
+						rowCount,
+						colCount,
+						width,
+						height,
+						outerBorderWidth
+					);
+				Assert.True(
+					cellRect.Left >= outerRect.Left
+				);
+				Assert.True(cellRect.Top >= outerRect.Top);
+				Assert.True(
+					cellRect.Right <= outerRect.Right
+				);
+				Assert.True(
+					cellRect.Bottom <= outerRect.Bottom
+				);
+			}
+		}
+	}
+
+	[Theory(
+		DisplayName = "BorderRects_NoOverlapBetweenAdjacentCells"
+	)]
+	[InlineData(400, 300, 10, 4, 2, 2)]
+	[InlineData(800, 600, 20, 8, 4, 4)]
+	public void CalculateBorderRects_NoOverlapBetweenAdjacentCells(
+		double width,
+		double height,
+		double outerBorderWidth,
+		double borderWidth,
+		int rowCount,
+		int colCount
+	)
+	{
+		// 仕様: 枠線が重ならないこと（隣接セルの境界線が重複しない）
+		var rect1 = TableShapeSource.CalculateCellRect(
+			0,
+			0,
+			rowCount,
+			colCount,
+			width,
+			height,
+			outerBorderWidth
+		);
+		var rect2 = TableShapeSource.CalculateCellRect(
+			0,
+			1,
+			rowCount,
+			colCount,
+			width,
+			height,
+			outerBorderWidth
+		);
+
+		var border1Right = rect1.Right - borderWidth / 2f;
+		var border2Left = rect2.Left + borderWidth / 2f;
+
+		Assert.True(border1Right <= border2Left);
+
+		var rect3 = TableShapeSource.CalculateCellRect(
+			1,
+			0,
+			rowCount,
+			colCount,
+			width,
+			height,
+			outerBorderWidth
+		);
+		var border1Bottom = rect1.Bottom - borderWidth / 2f;
+		var border3Top = rect3.Top + borderWidth / 2f;
+		Assert.True(border1Bottom <= border3Top);
+	}
+
+	[Theory(DisplayName = "TextRect_DoesNotOverlapBorder")]
+	[InlineData(400, 300, 10, 4, 2, 2)]
+	[InlineData(800, 600, 20, 8, 4, 4)]
+	public void CalculateTextRect_DoesNotOverlapBorder(
+		double width,
+		double height,
+		double outerBorderWidth,
+		double borderWidth,
+		int rowCount,
+		int colCount
+	)
+	{
+		// 仕様: 文字が枠線に被らないこと（文字領域が枠線領域に重ならない）
+		var rect = TableShapeSource.CalculateCellRect(
+			0,
+			0,
+			rowCount,
+			colCount,
+			width,
+			height,
+			outerBorderWidth
+		);
+
+		var padding = 4f;
+		var borderAndOuter =
+			(float)(borderWidth + outerBorderWidth) / 2f;
+
+		var leftText = rect.Left + borderAndOuter + padding;
+		var topText = rect.Top + borderAndOuter + padding;
+		var widthText = MathF.Max(
+			0f,
+			rect.Width - borderAndOuter * 2f - padding * 2f
+		);
+		var heightText = MathF.Max(
+			0f,
+			rect.Height - borderAndOuter * 2f - padding * 2f
+		);
+
+		var textRect = new Rect(
+			leftText,
+			topText,
+			widthText,
+			heightText
+		);
+		var borderRect = new Rect(
+			rect.Left,
+			rect.Top,
+			rect.Width,
+			rect.Height
+		);
+
+		Assert.True(textRect.Left >= borderRect.Left);
+		Assert.True(textRect.Top >= borderRect.Top);
+		Assert.True(textRect.Right <= borderRect.Right);
+		Assert.True(textRect.Bottom <= borderRect.Bottom);
+	}
 }

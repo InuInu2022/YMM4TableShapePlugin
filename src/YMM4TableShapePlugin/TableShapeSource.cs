@@ -452,13 +452,6 @@ internal partial class TableShapeSource : IShapeSource2
 		TableRenderContext ctx
 	)
 	{
-		var cellWidthBg =
-			(float)(ctx.Width - ctx.RealOuterWidth)
-			/ ctx.ColCount;
-		var cellHeightBg =
-			(float)(ctx.Height - ctx.RealOuterWidth)
-			/ ctx.RowCount;
-
 		for (var r = 0; r < ctx.RowCount; r++)
 		{
 			for (var c = 0; c < ctx.ColCount; c++)
@@ -473,19 +466,20 @@ internal partial class TableShapeSource : IShapeSource2
 
 				var cell = ctx.Model.Cells[r][c];
 
-				var left =
-					c * cellWidthBg + ctx.OuterMargin;
-				var top =
-					r * cellHeightBg + ctx.OuterMargin;
+				// ここで座標計算メソッドを利用
+				var cellRect = CalculateCellRect(
+					r,
+					c,
+					ctx.RowCount,
+					ctx.ColCount,
+					ctx.Width,
+					ctx.Height,
+					ctx.OuterBorderWidth
+				);
 
 				// セル背景
 				ctx.DeviceContext.FillRectangle(
-					new Vortice.Mathematics.Rect(
-						left,
-						top,
-						cellWidthBg,
-						cellHeightBg
-					),
+					cellRect,
 					ctx.CellBackgroundBrush!
 				);
 
@@ -497,31 +491,34 @@ internal partial class TableShapeSource : IShapeSource2
 					) / 2f;
 
 				var leftText =
-					left + borderAndOuter + padding;
+					cellRect.Left
+					+ borderAndOuter
+					+ padding;
 				var topText =
-					top + borderAndOuter + padding;
+					cellRect.Top + borderAndOuter + padding;
 				var widthText = MathF.Max(
 					0f,
-					cellWidthBg
+					cellRect.Width
 						- borderAndOuter * 2f
 						- padding * 2f
 				);
 				var heightText = MathF.Max(
 					0f,
-					cellHeightBg
+					cellRect.Height
 						- borderAndOuter * 2f
 						- padding * 2f
 				);
 
 				var rightText = leftText + widthText;
 				var bottomText = topText + heightText;
-				var rightCell = left + cellWidthBg;
-				var bottomCell = top + cellHeightBg;
+				var rightCell =
+					cellRect.Left + cellRect.Width;
+				var bottomCell =
+					cellRect.Top + cellRect.Height;
 
-				// 端ごとのギャップ計算
-				var leftGap = leftText - left;
+				var leftGap = leftText - cellRect.Left;
 				var rightGap = rightCell - rightText;
-				var topGap = topText - top;
+				var topGap = topText - cellRect.Top;
 				var bottomGap = bottomText - bottomCell;
 
 				var fSize = (float)
@@ -574,10 +571,9 @@ internal partial class TableShapeSource : IShapeSource2
 						_ => ParagraphAlignment.Near,
 					};
 
-				// 位置ごとのギャップも含めてデバッグ出力
 				Debug.WriteLine(
 					$"Cell[{r},{c}] Text=\"{cell.Text}\" Align={cell.TextAlign} "
-						+ $"Rect=({leftText},{topText},{widthText},{heightText}) CellRect=({left},{top},{cellWidthBg},{cellHeightBg}) "
+						+ $"Rect=({leftText},{topText},{widthText},{heightText}) CellRect=({cellRect.Left},{cellRect.Top},{cellRect.Width},{cellRect.Height}) "
 						+ $"Gaps: left={leftGap}, right={rightGap}, top={topGap}, bottom={bottomGap} "
 						+ $"TextAlignment={textFormat.TextAlignment} ParagraphAlignment={textFormat.ParagraphAlignment} FontSize={fSize}"
 				);
@@ -660,6 +656,42 @@ internal partial class TableShapeSource : IShapeSource2
 				VideoControllerPointConnection.Line,
 		};
 		Controllers = [controller];
+	}
+
+	internal static Rect CalculateOuterBorderRect(
+		double width,
+		double height,
+		double outerBorderWidth
+	)
+	{
+		var margin = (float)outerBorderWidth;
+		return new Rect(
+			margin / 2f,
+			margin / 2f,
+			(float)width - margin / 2f,
+			(float)height - margin / 2f
+		);
+	}
+
+	internal static Rect CalculateCellRect(
+		int row,
+		int col,
+		int rowCount,
+		int colCount,
+		double width,
+		double height,
+		double outerBorderWidth
+	)
+	{
+		var cellWidth =
+			(float)(width - outerBorderWidth) / colCount;
+		var cellHeight =
+			(float)(height - outerBorderWidth) / rowCount;
+		var left =
+			col * cellWidth + (float)outerBorderWidth / 2f;
+		var top =
+			row * cellHeight + (float)outerBorderWidth / 2f;
+		return new Rect(left, top, cellWidth, cellHeight);
 	}
 
 	protected virtual void Dispose(bool disposing)

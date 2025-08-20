@@ -8,37 +8,25 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="$(YMM4_PATH)\YukkuriMovieMaker.Controls.dll">
-      <Private>false</Private>
-      <CopyLocal>false</CopyLocal>
     </Reference>
     <Reference Include="$(YMM4_PATH)\YukkuriMovieMaker.Plugin.dll">
-      <Private>false</Private>
-      <CopyLocal>false</CopyLocal>
     </Reference>
     <Reference Include="Vortice.Direct2D1">
       <HintPath>$(YMM4_PATH)\Vortice.Direct2D1.dll</HintPath>
-      <Private>false</Private>
-      <CopyLocal>false</CopyLocal>
     </Reference>
     <Reference Include="Vortice.DirectX">
       <HintPath>$(YMM4_PATH)\Vortice.DirectX.dll</HintPath>
-      <Private>false</Private>
-      <CopyLocal>false</CopyLocal>
     </Reference>
     <Reference Include="Vortice.Mathematics">
       <HintPath>$(YMM4_PATH)\Vortice.Mathematics.dll</HintPath>
-      <Private>false</Private>
-      <CopyLocal>false</CopyLocal>
+      <Private>true</Private>
+      <CopyLocal>true</CopyLocal>
     </Reference>
     <Reference Include="SharpGen.Runtime">
       <HintPath>$(YMM4_PATH)\SharpGen.Runtime.dll</HintPath>
-      <Private>false</Private>
-      <CopyLocal>false</CopyLocal>
     </Reference>
     <Reference Include="SharpGen.Runtime.COM">
       <HintPath>$(YMM4_PATH)\SharpGen.Runtime.COM.dll</HintPath>
-      <Private>false</Private>
-      <CopyLocal>false</CopyLocal>
     </Reference>
   </ItemGroup>
 </Project>
