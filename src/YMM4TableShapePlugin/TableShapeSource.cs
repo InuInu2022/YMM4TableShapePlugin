@@ -361,21 +361,13 @@ internal partial class TableShapeSource : IShapeSource2
 			}
 		);
 
-		var cellWidth =
-			(float)context.Width / context.ColCount;
-		var cellHeight =
-			(float)context.Height / context.RowCount;
-
 		//一番外側のテーブルの外枠線(OuterBorder)+セルの内枠線
 		//	枠線幅0の場合は描画しない
 		if (context.OuterBorderWidth > 0)
 		{
 			DrawTableOuterBorders(
 				context,
-				ctx,
-				outerBorderBrush,
-				cellWidth,
-				cellHeight
+				outerBorderBrush
 			);
 		}
 
@@ -387,10 +379,7 @@ internal partial class TableShapeSource : IShapeSource2
 		{
 			DrawTableBorders(
 				context,
-				ctx,
-				borderBrush,
-				cellWidth,
-				cellHeight
+				borderBrush
 			);
 		}
 
@@ -409,18 +398,13 @@ internal partial class TableShapeSource : IShapeSource2
 	/// </summary>
 	///
 	/// <param name="context"></param>
-	/// <param name="ctx"></param>
 	/// <param name="borderBrush"></param>
-	/// <param name="cellWidth"></param>
-	/// <param name="cellHeight"></param>
 	private static void DrawTableBorders(
 		TableRenderContext context,
-		ID2D1DeviceContext6 ctx,
-		ID2D1SolidColorBrush borderBrush,
-		float cellWidth,
-		float cellHeight
+		ID2D1SolidColorBrush borderBrush
 	)
 	{
+		var ctx = context.DeviceContext;
 		//一番外側のテーブルの枠線
 		ctx.DrawRectangle(
 			CalcTableOuterBorderRect(context),
@@ -435,8 +419,6 @@ internal partial class TableShapeSource : IShapeSource2
 		DrawTableGridLines(
 			context,
 			ctx,
-			cellWidth,
-			cellHeight,
 			brush,
 			bWidth
 		);
@@ -446,18 +428,13 @@ internal partial class TableShapeSource : IShapeSource2
 	/// 一番外側のテーブルの外枠線(OuterBorder)+セルの内枠線を描画する
 	/// </summary>
 	/// <param name="context"></param>
-	/// <param name="ctx"></param>
 	/// <param name="outerBorderBrush"></param>
-	/// <param name="cellWidth"></param>
-	/// <param name="cellHeight"></param>
 	private static void DrawTableOuterBorders(
 		TableRenderContext context,
-		ID2D1DeviceContext6 ctx,
-		ID2D1SolidColorBrush outerBorderBrush,
-		float cellWidth,
-		float cellHeight
+		ID2D1SolidColorBrush outerBorderBrush
 	)
 	{
+		var ctx = context.DeviceContext;
 		//一番外側のテーブルの外枠線
 		ctx.DrawRectangle(
 			CalcTableOuterBorderRect(context),
@@ -473,8 +450,6 @@ internal partial class TableShapeSource : IShapeSource2
 		DrawTableGridLines(
 			context,
 			ctx,
-			cellWidth,
-			cellHeight,
 			brush,
 			bWidth
 		);
@@ -492,29 +467,56 @@ internal partial class TableShapeSource : IShapeSource2
 	static void DrawTableGridLines(
 		TableRenderContext context,
 		ID2D1DeviceContext6 ctx,
-		float cellWidth,
-		float cellHeight,
 		ID2D1SolidColorBrush brush,
 		float borderWidth
 	)
 	{
 		var margin = context.RealOuterWidth / 2f;
+		var rect = CalculateCellRect(
+			1,
+			1,
+			context.RowCount,
+			context.ColCount,
+			context.Width,
+			context.Height,
+			context.RealOuterWidth
+		);
 		for (var c = 1; c < context.ColCount; c++)
 		{
-			var x = c * cellWidth;
+			var x =
+				rect.Width * c
+				//テーブル外枠
+				+ context.RealOuterWidth
+				//セル間分
+				+ context.RealOuterWidth * (c - 1)
+				//枠線offset
+				+ margin;
 			ctx.DrawLine(
 				new Vector2(x, margin),
-				new Vector2(x, (float)context.Height),
+				new Vector2(
+					x,
+					(float)context.Height - margin
+				),
 				brush,
 				borderWidth
 			);
 		}
 		for (var r = 1; r < context.RowCount; r++)
 		{
-			var y = r * cellHeight;
+			var y =
+				rect.Height * r
+				//テーブル外枠
+				+ context.RealOuterWidth
+				//セル間分
+				+ context.RealOuterWidth * (r - 1)
+				//枠線offset
+				+ margin;
 			ctx.DrawLine(
 				new Vector2(margin, y),
-				new Vector2((float)context.Width, y),
+				new Vector2(
+					(float)context.Width - margin,
+					y
+				),
 				brush,
 				borderWidth
 			);
@@ -534,8 +536,8 @@ internal partial class TableShapeSource : IShapeSource2
 		return new Rect(
 			margin,
 			margin,
-			(float)context.Width - margin,
-			(float)context.Height - margin
+			(float)context.Width - margin * 2,
+			(float)context.Height - margin * 2
 		);
 	}
 
@@ -579,10 +581,7 @@ internal partial class TableShapeSource : IShapeSource2
 
 				var padding = 4f;
 				var borderAndOuter =
-					(float)(
-						ctx.BorderWidth
-						+ ctx.OuterBorderWidth
-					) / 2f;
+					(float)ctx.OuterBorderWidth / 2f;
 
 				var leftText =
 					cellRect.Left
@@ -593,14 +592,14 @@ internal partial class TableShapeSource : IShapeSource2
 				var widthText = MathF.Max(
 					0f,
 					cellRect.Width
-						- borderAndOuter * 2f
-						- padding * 2f
+						- borderAndOuter
+						- padding
 				);
 				var heightText = MathF.Max(
 					0f,
 					cellRect.Height
-						- borderAndOuter * 2f
-						- padding * 2f
+						- borderAndOuter
+						- padding
 				);
 
 				var rightText = leftText + widthText;
@@ -752,21 +751,6 @@ internal partial class TableShapeSource : IShapeSource2
 		Controllers = [controller];
 	}
 
-	internal static Rect CalculateOuterBorderRect(
-		double width,
-		double height,
-		double outerBorderWidth
-	)
-	{
-		var margin = (float)outerBorderWidth;
-		return new Rect(
-			margin / 2f,
-			margin / 2f,
-			(float)width - margin / 2f,
-			(float)height - margin / 2f
-		);
-	}
-
 	internal static Rect CalculateCellRect(
 		int row,
 		int col,
@@ -777,18 +761,36 @@ internal partial class TableShapeSource : IShapeSource2
 		double realOuterBorderWidth
 	)
 	{
+		//grid線分の計算をいれる
+
+		//高さと幅
+		// col/rowにかかわらず同じ高さ・幅
 		var cellWidth =
-			(float)(width - realOuterBorderWidth)
-			/ colCount;
+			(float)(
+				width
+				//外枠分
+				- realOuterBorderWidth * 2
+				//セル間分(count - 1)
+				- realOuterBorderWidth * (colCount - 1)
+			) / colCount;
 		var cellHeight =
-			(float)(height - realOuterBorderWidth)
-			/ rowCount;
+			(float)(
+				height
+				- realOuterBorderWidth * 2
+				- realOuterBorderWidth * (rowCount - 1)
+			) / rowCount;
+
+		//左上の座標
 		var left =
 			col * cellWidth
-			+ (float)realOuterBorderWidth / 2f;
+			//外枠分
+			+ (float)realOuterBorderWidth
+			//セル間分
+			+ (float)realOuterBorderWidth * col;
 		var top =
 			row * cellHeight
-			+ (float)realOuterBorderWidth / 2f;
+			+ (float)realOuterBorderWidth
+			+ (float)realOuterBorderWidth * row;
 		return new Rect(left, top, cellWidth, cellHeight);
 	}
 
