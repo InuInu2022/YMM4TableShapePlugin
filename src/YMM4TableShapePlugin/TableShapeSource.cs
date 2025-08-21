@@ -575,8 +575,6 @@ internal partial class TableShapeSource : IShapeSource2
 				);
 
 				var padding = 4f;
-				var borderAndOuter =
-					(float)ctx.OuterBorderWidth / 2f;
 
 				var leftText =
 					cellRect.Left
