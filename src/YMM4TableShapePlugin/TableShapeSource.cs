@@ -568,7 +568,7 @@ internal partial class TableShapeSource : IShapeSource2
 					ctx.ColCount,
 					ctx.Width,
 					ctx.Height,
-					ctx.OuterBorderWidth
+					ctx.RealOuterWidth
 				);
 
 				// セル背景
@@ -774,17 +774,21 @@ internal partial class TableShapeSource : IShapeSource2
 		int colCount,
 		double width,
 		double height,
-		double outerBorderWidth
+		double realOuterBorderWidth
 	)
 	{
 		var cellWidth =
-			(float)(width - outerBorderWidth) / colCount;
+			(float)(width - realOuterBorderWidth)
+			/ colCount;
 		var cellHeight =
-			(float)(height - outerBorderWidth) / rowCount;
+			(float)(height - realOuterBorderWidth)
+			/ rowCount;
 		var left =
-			col * cellWidth + (float)outerBorderWidth / 2f;
+			col * cellWidth
+			+ (float)realOuterBorderWidth / 2f;
 		var top =
-			row * cellHeight + (float)outerBorderWidth / 2f;
+			row * cellHeight
+			+ (float)realOuterBorderWidth / 2f;
 		return new Rect(left, top, cellWidth, cellHeight);
 	}
 

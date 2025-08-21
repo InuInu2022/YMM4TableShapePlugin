@@ -1,6 +1,9 @@
-﻿using Vortice.Mathematics;
+﻿using Vortice.Direct2D1;
+using Vortice.Mathematics;
 using Xunit;
 using YMM4TableShapePlugin;
+
+using static YMM4TableShapePlugin.TableShapeSource;
 
 namespace PluginTests;
 
@@ -21,43 +24,92 @@ namespace PluginTests;
 /// - 文字が枠線に被らないこと
 /// - 全セルサイズが均一であること
 /// </summary>
+[System.Diagnostics.CodeAnalysis.SuppressMessage(
+	"Naming",
+	"CA1707:識別子はアンダースコアを含むことはできません",
+	Justification = "<保留中>"
+)]
 public class DrawTableCellTests
 {
+	readonly TableRenderContext _tcx = new(
+		0,
+		0,
+		0,
+		new(1, 1),
+		1,
+		0,
+		new ID2D1DeviceContext6(0),
+		null,
+		null,
+		null,
+		100,
+		100,
+		1,
+		1,
+		10,
+		4,
+		new(),
+		new(),
+		new()
+	);
+
 	[Theory(
 		DisplayName = "OuterBorderRect_IsWithinTableBounds_NoOverflow"
 	)]
-	[InlineData(400, 300, 10)]
-	[InlineData(800, 600, 20)]
-	[InlineData(100, 100, 0)]
+	[InlineData(400, 300, 1, 10)]
+	[InlineData(800, 600, 10, 20)]
+	[InlineData(100, 100, 5, 0)]
 	public void CalculateOuterBorderRect_OuterBorderIsWithinBounds_NoOverflow(
 		double width,
 		double height,
+		double borderWidth,
 		double outerBorderWidth
 	)
 	{
 		// 仕様: 外枠（OuterBorderRect）はテーブル領域内に収まること（はみ出し禁止）
+
+		Assert.True(borderWidth >= 1, "検証データエラー");
+		Assert.True(
+			outerBorderWidth >= 0,
+			"検証データエラー"
+		);
+
+		var ctx = _tcx with
+		{
+			OuterBorderWidth = outerBorderWidth,
+			Width = width,
+			Height = height,
+			BorderWidth = borderWidth,
+			RealOuterWidth =
+				(float)borderWidth / 2f
+				+ (float)outerBorderWidth,
+		};
 		var rect =
-			TableShapeSource.CalculateOuterBorderRect(
-				width,
-				height,
-				outerBorderWidth
+			CalcTableOuterBorderRect(
+				ctx
 			);
 
-		Assert.True(rect.Left >= 0);
-		Assert.True(rect.Top >= 0);
-		Assert.True(rect.Right <= (float)width);
-		Assert.True(rect.Bottom <= (float)height);
+		Assert.True(rect.Left >= ctx.RealOuterWidth);
+		Assert.True(rect.Top >= ctx.RealOuterWidth);
+		Assert.True(
+			rect.Right <= (float)width - ctx.RealOuterWidth
+		);
+		Assert.True(
+			rect.Bottom
+				<= (float)height - ctx.RealOuterWidth
+		);
 	}
 
 	[Theory(
 		DisplayName = "CellRects_AreUniformSize_WhenDivided"
 	)]
-	[InlineData(400, 300, 10, 2, 2)]
-	[InlineData(800, 600, 20, 4, 4)]
-	[InlineData(100, 100, 0, 1, 1)]
+	[InlineData(400, 300, 1, 10, 2, 2)]
+	[InlineData(800, 600, 10, 20, 4, 4)]
+	[InlineData(100, 100, 20, 0, 1, 1)]
 	public void CalculateCellRect_CellRectsAreUniformSize_WhenDivided(
 		double width,
 		double height,
+		double borderWidth,
 		double outerBorderWidth,
 		int rowCount,
 		int colCount
@@ -65,47 +117,35 @@ public class DrawTableCellTests
 	{
 		// 仕様: 各セルのRectは分割時に均一サイズであること
 		// 仕様: 全セルサイズが均一であること
-		var rect1 = TableShapeSource.CalculateCellRect(
-			0,
-			0,
-			rowCount,
-			colCount,
-			width,
-			height,
-			outerBorderWidth
-		);
-		var rect2 = TableShapeSource.CalculateCellRect(
-			0,
-			1,
-			rowCount,
-			colCount,
-			width,
-			height,
-			outerBorderWidth
-		);
-		var rect3 = TableShapeSource.CalculateCellRect(
-			1,
-			0,
-			rowCount,
-			colCount,
-			width,
-			height,
-			outerBorderWidth
-		);
-		var rect4 = TableShapeSource.CalculateCellRect(
-			1,
-			1,
-			rowCount,
-			colCount,
-			width,
-			height,
-			outerBorderWidth
-		);
 
-		Assert.Equal(rect1.Width, rect2.Width);
-		Assert.Equal(rect1.Height, rect3.Height);
-		Assert.Equal(rect2.Width, rect4.Width);
-		Assert.Equal(rect3.Height, rect4.Height);
+		var realOuterBorderWidth =
+			outerBorderWidth + borderWidth / 2;
+
+		List<Rect> rects = [];
+
+		for (int r = 0; r < rowCount; r++)
+		{
+			for (int c = 0; c < colCount; c++)
+			{
+				var cellRect = CalculateCellRect(
+					r,
+					c,
+					rowCount,
+					colCount,
+					width,
+					height,
+					realOuterBorderWidth
+				);
+				rects.Add(cellRect);
+			}
+		}
+
+		var w = rects.First().Width;
+		var h = rects.First().Height;
+
+		Assert.True(
+			rects.All(r => r.Width == w && r.Height == h)
+		);
 	}
 
 	[Theory(DisplayName = "CellRects_NoGapBetweenCells")]
