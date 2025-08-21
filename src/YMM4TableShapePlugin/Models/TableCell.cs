@@ -5,6 +5,8 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Windows.Media;
 
+using Vortice.DirectWrite;
+
 using YukkuriMovieMaker.Commons;
 using YukkuriMovieMaker.Controls;
 using YukkuriMovieMaker.Resources.Localization;
@@ -121,6 +123,32 @@ public sealed class TableCell
 	[Range(1.0, 50)]
 	public Animation FontSize { get; set; } =
 		new Animation(34, 1, 1000);
+
+	[Display(
+		GroupName = "セル",
+		Name = "太字",
+		Description = ""
+	)]
+	[ToggleSlider]
+	public bool IsFontBold
+	{
+		get => isFontBold;
+		set { Set(ref isFontBold, value); }
+	}
+	bool isFontBold;
+
+	[Display(
+		GroupName = "セル",
+		Name = "イタリック",
+		Description = ""
+	)]
+	[ToggleSlider]
+	public bool IsFontItalic
+	{
+		get => isFontItalic;
+		set { Set(ref isFontItalic, value); }
+	}
+	bool isFontItalic;
 
 	public required int Row { get; init; }
 	public required int Col { get; init; }

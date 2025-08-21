@@ -619,10 +619,23 @@ internal partial class TableShapeSource : IShapeSource2
 
 				using var textFormat =
 					ctx.WriteFactory!.CreateTextFormat(
-						cell.Font is not ""
+						fontFamilyName: cell.Font is not ""
 							? cell.Font
 							: DefaultFontName,
-						fSize > 0f ? fSize : DefaultFontSize
+						fontSize: fSize > 0f
+							? fSize
+							: DefaultFontSize,
+						fontStretch: FontStretch.Normal,
+						fontStyle: cell.IsFontItalic switch
+						{
+							true => FontStyle.Italic,
+							false => FontStyle.Normal,
+						},
+						fontWeight: cell.IsFontBold switch
+						{
+							true => FontWeight.Bold,
+							false => FontWeight.Normal,
+						}
 					);
 
 				textFormat.TextAlignment =
