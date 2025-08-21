@@ -366,83 +366,177 @@ internal partial class TableShapeSource : IShapeSource2
 		var cellHeight =
 			(float)context.Height / context.RowCount;
 
+		//一番外側のテーブルの外枠線(OuterBorder)+セルの内枠線
+		//	枠線幅0の場合は描画しない
 		if (context.OuterBorderWidth > 0)
 		{
-			ctx.DrawRectangle(
-				new Vortice.Mathematics.Rect(
-					context.RealOuterWidth / 2f,
-					context.RealOuterWidth / 2f,
-					(float)context.Width
-						- context.RealOuterWidth / 2f,
-					(float)context.Height
-						- context.RealOuterWidth / 2f
-				),
+			DrawTableOuterBorders(
+				context,
+				ctx,
 				outerBorderBrush,
-				context.RealOuterWidth
+				cellWidth,
+				cellHeight
 			);
-
-			for (var c = 1; c < context.ColCount; c++)
-			{
-				var x = c * cellWidth;
-				ctx.DrawLine(
-					new Vector2(x, 0f),
-					new Vector2(x, (float)context.Height),
-					outerBorderBrush,
-					context.RealOuterWidth
-				);
-			}
-			for (var r = 1; r < context.RowCount; r++)
-			{
-				var y = r * cellHeight;
-				ctx.DrawLine(
-					new Vector2(0f, y),
-					new Vector2((float)context.Width, y),
-					outerBorderBrush,
-					context.RealOuterWidth
-				);
-			}
 		}
 
+		//一番外側のテーブルの枠線(Border)+グリッド線
+		//	これも幅0なら描画しない
+		//	線の中心座標は <see cref="DrawTableOuterBorder"/> と同じ
+		//	`DrawTableOuterBorders`の **あとに** 描画して同じ位置に重ねる
 		if (context.BorderWidth > 0)
 		{
-			var margin = context.RealOuterWidth / 2f;
-
-			ctx.DrawRectangle(
-				new Vortice.Mathematics.Rect(
-					margin,
-					margin,
-					(float)(context.Width - margin),
-					(float)(context.Height - margin)
-				),
+			DrawTableBorders(
+				context,
+				ctx,
 				borderBrush,
-				(float)context.BorderWidth
+				cellWidth,
+				cellHeight
 			);
-
-			for (var c = 1; c < context.ColCount; c++)
-			{
-				var x = c * cellWidth;
-				ctx.DrawLine(
-					new Vector2(x, margin),
-					new Vector2(x, (float)context.Height),
-					borderBrush,
-					(float)context.BorderWidth
-				);
-			}
-			for (var r = 1; r < context.RowCount; r++)
-			{
-				var y = r * cellHeight;
-				ctx.DrawLine(
-					new Vector2(margin, y),
-					new Vector2((float)context.Width, y),
-					borderBrush,
-					(float)context.BorderWidth
-				);
-			}
 		}
 
 		ctx.EndDraw();
 		ctx.Target = null;
 		commandList.Close();
+	}
+
+	/// <summary>
+	/// 一番外側のテーブルの枠線(OuterBorder)+グリッド線を描画する
+	///
+	/// <para>
+	/// - 線の中心座標は  <see cref="DrawTableOuterBorder"/> と同じ
+	/// - <see cref="DrawTableOuterBorder"/> の **あとに** 描画して同じ位置に重ねる
+	/// </para>
+	/// </summary>
+	///
+	/// <param name="context"></param>
+	/// <param name="ctx"></param>
+	/// <param name="borderBrush"></param>
+	/// <param name="cellWidth"></param>
+	/// <param name="cellHeight"></param>
+	private static void DrawTableBorders(
+		TableRenderContext context,
+		ID2D1DeviceContext6 ctx,
+		ID2D1SolidColorBrush borderBrush,
+		float cellWidth,
+		float cellHeight
+	)
+	{
+		//一番外側のテーブルの枠線
+		ctx.DrawRectangle(
+			CalcTableOuterBorderRect(context),
+			borderBrush,
+			(float)context.BorderWidth
+		);
+
+		//セルの間のグリッド線
+		var brush = borderBrush;
+		var bWidth = (float)context.BorderWidth;
+
+		DrawTableGridLines(
+			context,
+			ctx,
+			cellWidth,
+			cellHeight,
+			brush,
+			bWidth
+		);
+	}
+
+	/// <summary>
+	/// 一番外側のテーブルの外枠線(OuterBorder)+セルの内枠線を描画する
+	/// </summary>
+	/// <param name="context"></param>
+	/// <param name="ctx"></param>
+	/// <param name="outerBorderBrush"></param>
+	/// <param name="cellWidth"></param>
+	/// <param name="cellHeight"></param>
+	private static void DrawTableOuterBorders(
+		TableRenderContext context,
+		ID2D1DeviceContext6 ctx,
+		ID2D1SolidColorBrush outerBorderBrush,
+		float cellWidth,
+		float cellHeight
+	)
+	{
+		//一番外側のテーブルの外枠線
+		ctx.DrawRectangle(
+			CalcTableOuterBorderRect(context),
+			outerBorderBrush,
+			context.RealOuterWidth
+		);
+
+		//セルの間のグリッド線
+		//先に描画しておくことでセルの内枠線に見える
+		var brush = outerBorderBrush;
+		var bWidth = context.RealOuterWidth;
+
+		DrawTableGridLines(
+			context,
+			ctx,
+			cellWidth,
+			cellHeight,
+			brush,
+			bWidth
+		);
+	}
+
+	/// <summary>
+	/// セルの間のグリッド線描画
+	/// </summary>
+	/// <param name="context"></param>
+	/// <param name="ctx"></param>
+	/// <param name="cellWidth"></param>
+	/// <param name="cellHeight"></param>
+	/// <param name="brush"></param>
+	/// <param name="borderWidth"></param>
+	static void DrawTableGridLines(
+		TableRenderContext context,
+		ID2D1DeviceContext6 ctx,
+		float cellWidth,
+		float cellHeight,
+		ID2D1SolidColorBrush brush,
+		float borderWidth
+	)
+	{
+		var margin = context.RealOuterWidth / 2f;
+		for (var c = 1; c < context.ColCount; c++)
+		{
+			var x = c * cellWidth;
+			ctx.DrawLine(
+				new Vector2(x, margin),
+				new Vector2(x, (float)context.Height),
+				brush,
+				borderWidth
+			);
+		}
+		for (var r = 1; r < context.RowCount; r++)
+		{
+			var y = r * cellHeight;
+			ctx.DrawLine(
+				new Vector2(margin, y),
+				new Vector2((float)context.Width, y),
+				brush,
+				borderWidth
+			);
+		}
+	}
+
+	/// <summary>
+	/// 一番外側のテーブルの枠線Rectを計算
+	/// </summary>
+	/// <param name="context"></param>
+	/// <returns>一番外側のテーブルの枠線Rect</returns>
+	internal static Rect CalcTableOuterBorderRect(
+		TableRenderContext context
+	)
+	{
+		var margin = context.RealOuterWidth / 2f;
+		return new Rect(
+			margin,
+			margin,
+			(float)context.Width - margin,
+			(float)context.Height - margin
+		);
 	}
 
 	const string DefaultFontName = "Yu Gothic UI";

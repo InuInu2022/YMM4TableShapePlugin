@@ -87,7 +87,7 @@ internal partial class TableShapeSource
 	/// <summary>
 	/// テーブル描画に必要なパラメータをまとめた構造体
 	/// </summary>
-	readonly record struct TableRenderContext(
+	internal readonly record struct TableRenderContext(
 		int Frame,
 		int Length,
 		int Fps,
