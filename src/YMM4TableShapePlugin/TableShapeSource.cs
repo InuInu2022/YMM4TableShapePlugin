@@ -418,7 +418,6 @@ internal partial class TableShapeSource : IShapeSource2
 
 		DrawTableGridLines(
 			context,
-			ctx,
 			brush,
 			bWidth
 		);
@@ -449,7 +448,6 @@ internal partial class TableShapeSource : IShapeSource2
 
 		DrawTableGridLines(
 			context,
-			ctx,
 			brush,
 			bWidth
 		);
@@ -459,18 +457,15 @@ internal partial class TableShapeSource : IShapeSource2
 	/// セルの間のグリッド線描画
 	/// </summary>
 	/// <param name="context"></param>
-	/// <param name="ctx"></param>
-	/// <param name="cellWidth"></param>
-	/// <param name="cellHeight"></param>
 	/// <param name="brush"></param>
 	/// <param name="borderWidth"></param>
 	static void DrawTableGridLines(
 		TableRenderContext context,
-		ID2D1DeviceContext6 ctx,
 		ID2D1SolidColorBrush brush,
 		float borderWidth
 	)
 	{
+		var ctx = context.DeviceContext;
 		var margin = context.RealOuterWidth / 2f;
 		var rect = CalculateCellRect(
 			1,
@@ -585,21 +580,24 @@ internal partial class TableShapeSource : IShapeSource2
 
 				var leftText =
 					cellRect.Left
-					+ borderAndOuter
 					+ padding;
 				var topText =
-					cellRect.Top + borderAndOuter + padding;
+					cellRect.Top + padding;
 				var widthText = MathF.Max(
 					0f,
 					cellRect.Width
-						- borderAndOuter
-						- padding
+						- padding * 2
 				);
 				var heightText = MathF.Max(
 					0f,
 					cellRect.Height
-						- borderAndOuter
-						- padding
+						- padding * 2
+				);
+				var textRect = new Rect(
+					leftText,
+					topText,
+					widthText,
+					heightText
 				);
 
 				var rightText = leftText + widthText;
@@ -674,12 +672,7 @@ internal partial class TableShapeSource : IShapeSource2
 				ctx.DeviceContext.DrawText(
 					cell.Text,
 					textFormat,
-					new Rect(
-						leftText,
-						topText,
-						widthText,
-						heightText
-					),
+					textRect,
 					ctx.DeviceContext!.CreateSolidColorBrush(
 						new(
 							red: cell.FontColor.R,
