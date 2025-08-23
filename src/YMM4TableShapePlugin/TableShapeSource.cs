@@ -291,7 +291,6 @@ internal partial class TableShapeSource : IShapeSource2
 
 		// outerBorderBrushキャッシュ（色・太さ変更時のみ再生成）
 		CacheTableProperties(context);
-		//TODO: borderBrushキャッシュ
 
 		if (commandList is not null)
 		{
