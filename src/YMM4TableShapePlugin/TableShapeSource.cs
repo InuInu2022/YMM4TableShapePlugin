@@ -273,9 +273,12 @@ internal partial class TableShapeSource : IShapeSource2
 		}
 	}
 
+	ID2D1SolidColorBrush? cachedBorderBrush;
+	System.Windows.Media.Color? cachedBorderColor;
 	ID2D1SolidColorBrush? cachedOuterBorderBrush;
 	System.Windows.Media.Color? cachedOuterBorderColor;
-	float? cachedOuterBorderWidth;
+	ID2D1SolidColorBrush? cachedCellBgBrush;
+	System.Windows.Media.Color? cachedCellBgColor;
 
 	[System.Diagnostics.CodeAnalysis.SuppressMessage(
 		"Usage",
@@ -287,7 +290,7 @@ internal partial class TableShapeSource : IShapeSource2
 		var ctx = Devices.DeviceContext;
 
 		// outerBorderBrushキャッシュ（色・太さ変更時のみ再生成）
-		CacheOuterBorderProperties(context);
+		CacheTableProperties(context);
 		//TODO: borderBrushキャッシュ
 
 		if (commandList is not null)
@@ -297,22 +300,8 @@ internal partial class TableShapeSource : IShapeSource2
 		commandList = ctx.CreateCommandList();
 		disposer.Collect(commandList);
 
-		var cellBgBrush = ctx.CreateSolidColorBrush(
-			new(
-				context.BackgroundColor.R,
-				context.BackgroundColor.G,
-				context.BackgroundColor.B,
-				context.BackgroundColor.A
-			)
-		);
-		var borderBrush = ctx.CreateSolidColorBrush(
-			new(
-				context.BorderColor.R,
-				context.BorderColor.G,
-				context.BorderColor.B,
-				context.BorderColor.A
-			)
-		);
+		var cellBgBrush = cachedCellBgBrush;
+		var borderBrush = cachedBorderBrush;
 		var outerBorderBrush = cachedOuterBorderBrush;
 		var headerRowBackgroundBrush =
 			context.HeaderRowBackgroundColor is not null
@@ -416,36 +405,62 @@ internal partial class TableShapeSource : IShapeSource2
 		commandList.Close();
 	}
 
+	[MemberNotNull(nameof(cachedBorderBrush))]
 	[MemberNotNull(nameof(cachedOuterBorderBrush))]
-	void CacheOuterBorderProperties(
+	[MemberNotNull(nameof(cachedCellBgBrush))]
+	[SuppressMessage(
+		"Usage",
+		"SMA0040:Missing Using Statement",
+		Justification = "<保留中>"
+	)]
+	void CacheTableProperties(
 		TableRenderContext context
 	)
 	{
-		if (
-			cachedOuterBorderBrush is null
-			|| cachedOuterBorderColor
-				!= context.OuterBorderColor
-			|| cachedOuterBorderWidth
-				!= (float)context.OuterBorderWidth
+		//毎回ブラシ生成しないように、色が変わったらブラシ再生成
+
+		CachePropertyCore(
+			ref cachedBorderBrush,
+			ref cachedBorderColor,
+			context.BorderColor
+		);
+
+		CachePropertyCore(
+			ref cachedOuterBorderBrush,
+			ref cachedOuterBorderColor,
+			context.OuterBorderColor
+		);
+
+		CachePropertyCore(
+			ref cachedCellBgBrush,
+			ref cachedCellBgColor,
+			context.BackgroundColor
+		);
+
+		void CachePropertyCore(
+			[NotNull] ref ID2D1SolidColorBrush? cachedBrush,
+			ref System.Windows.Media.Color? cachedColor,
+			System.Windows.Media.Color newColor
 		)
 		{
-			disposer.RemoveAndDispose(
-				ref cachedOuterBorderBrush
-			);
-			cachedOuterBorderBrush =
-				context.DeviceContext.CreateSolidColorBrush(
-					new(
-						context.OuterBorderColor.R,
-						context.OuterBorderColor.G,
-						context.OuterBorderColor.B,
-						context.OuterBorderColor.A
-					)
-				);
-			disposer.Collect(cachedOuterBorderBrush);
-			cachedOuterBorderColor =
-				context.OuterBorderColor;
-			cachedOuterBorderWidth = (float)
-				context.OuterBorderWidth;
+			if (
+				cachedBrush is null
+				|| cachedColor != newColor
+			)
+			{
+				disposer.RemoveAndDispose(ref cachedBrush);
+				cachedBrush =
+					context.DeviceContext.CreateSolidColorBrush(
+						new(
+							newColor.R,
+							newColor.G,
+							newColor.B,
+							newColor.A
+						)
+					);
+				disposer.Collect(cachedBrush);
+				cachedColor = newColor;
+			}
 		}
 	}
 
