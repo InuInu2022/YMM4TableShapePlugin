@@ -4,16 +4,19 @@ using System.Reflection;
 namespace YMM4TableShapePlugin.Models;
 
 [Obfuscation(Exclude = true, ApplyToMembers = true)]
+[Flags]
 public enum CellTextStyle
 {
 	[Display(Name = "なし")]
-	Normal = 0,
+	Normal = 1,
 
 	[Display(Name = "鋭角枠線")]
-	ShapedBorder,
+	ShapedBorder = 4,
 
 	[Display(Name = "角丸枠線")]
-	RoundedBorder,
+	RoundedBorder = 8,
 
-	//要望があれば影とかも
+	// 追加例
+	//[Display(Name = "影")]
+	//Shadow = 16
 }
