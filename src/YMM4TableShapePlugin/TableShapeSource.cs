@@ -786,7 +786,36 @@ internal partial class TableShapeSource : IShapeSource2
 						== CellTextStyle.RoundedBorder
 				)
 				{
-					//TODO: Draw outlined text
+					using var textLayout =
+						ctx.WriteFactory!.CreateTextLayout(
+							cell.Text,
+							textFormat,
+							textRect.Width,
+							textRect.Height
+						);
+
+					var outlineWidth = (float)
+						ctx.OuterBorderWidth;
+					var origin = new Vector2(
+						textRect.Left,
+						textRect.Top
+					);
+
+					// グリフアウトライン描画
+					textLayout.Draw(
+						nint.Zero,
+						new Renderers.OutlineTextRenderer(
+							ctx.DeviceContext,
+							GetTextBrush(
+								cell.FontOutlineColor
+							),
+							GetTextBrush(cell.FontColor),
+							origin,
+							outlineWidth
+						),
+						0.0f,
+						0.0f
+					);
 				}
 				else if (
 					cell.TextStyle == CellTextStyle.Normal
