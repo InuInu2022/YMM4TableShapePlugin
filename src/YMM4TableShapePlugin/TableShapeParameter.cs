@@ -3,10 +3,8 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Windows.Media;
-
 using YMM4TableShapePlugin.Enums;
 using YMM4TableShapePlugin.Models;
-
 using YukkuriMovieMaker.Commons;
 using YukkuriMovieMaker.Controls;
 using YukkuriMovieMaker.Exo;
@@ -21,8 +19,6 @@ internal class TableShapeParameter(
 	SharedDataStore? sharedData
 ) : ShapeParameterBase(sharedData)
 {
-
-
 	[Display(Name = "幅")]
 	[AnimationSlider("F0", "px", 0, 1000)]
 	[DefaultValue(500)]
@@ -103,12 +99,116 @@ internal class TableShapeParameter(
 
 	private Color _backgroundColor = Colors.WhiteSmoke;
 
-	#region header
+	#region common_cell_style	//-------------------------------//
 
 	[Display(
-		GroupName = "ヘッダー",
-		Name = "ヘッダー強調"
+		GroupName = "共通セルスタイル",
+		Name = "フォント"
 	)]
+	[FontComboBox]
+	public string CellFont
+	{
+		get => _font;
+		set => Set(ref _font, value);
+	}
+	string _font = "Yu Gothic UI";
+
+	[Display(
+		GroupName = "共通セルスタイル",
+		Name = "サイズ",
+		Description = ""
+	)]
+	[AnimationSlider("F1", "", 1, 50)]
+	[DefaultValue(34)]
+	[Range(1.0, 50)]
+	public Animation CellFontSize { get; set; } =
+		new Animation(34, 1, 1000);
+
+	[Display(
+		GroupName = "共通セルスタイル",
+		Name = "文字色"
+	)]
+	[ColorPicker(
+		PropertyEditorSize = PropertyEditorSize.Half
+	)]
+	public Color CellFontColor
+	{
+		get => _fontColor;
+		set => Set(ref _fontColor, value);
+	}
+	Color _fontColor = Colors.Black;
+
+	[Display(
+		GroupName = "共通セルスタイル",
+		Name = "装飾色"
+	)]
+	[ColorPicker(
+		PropertyEditorSize = PropertyEditorSize.Half
+	)]
+	public Color CellFontOutlineColor
+	{
+		get => _fontOutlineColor;
+		set => Set(ref _fontOutlineColor, value);
+	}
+	Color _fontOutlineColor = Colors.White;
+
+	[Display(
+		GroupName = "共通セルスタイル",
+		Name = "文字装飾"
+	)]
+	[EnumComboBox]
+	public CellTextStyle CellTextStyle
+	{
+		get => _cellTextStyle;
+		set => Set(ref _cellTextStyle, value);
+	}
+	CellTextStyle _cellTextStyle = CellTextStyle.Normal;
+
+	[Display(
+		GroupName = "共通セルスタイル",
+		Name = "テキストの配置",
+		Description = ""
+	)]
+	[EnumComboBox]
+	public CellContentAlign CellTextAlign
+	{
+		get => _textAlign;
+		set { Set(ref _textAlign, value); }
+	}
+	CellContentAlign _textAlign =
+		CellContentAlign.MiddleCenter;
+
+	[Display(
+		GroupName = "共通セルスタイル",
+		Name = "太字",
+		Description = ""
+	)]
+	[ToggleSlider]
+	public bool IsCellFontBold
+	{
+		get => _isFontBold;
+		set { Set(ref _isFontBold, value); }
+	}
+	bool _isFontBold;
+
+	[Display(
+		GroupName = "共通セルスタイル",
+		Name = "イタリック",
+		Description = ""
+	)]
+	[ToggleSlider]
+	public bool IsCellFontItalic
+	{
+		get => _isFontItalic;
+		set { Set(ref _isFontItalic, value); }
+	}
+	bool _isFontItalic;
+
+	#endregion common_cell_style
+
+	#region header	//------------------------------------------//
+
+	[Display(GroupName = "ヘッダー", Name = "ヘッダー強調")]
 	[EnumComboBox]
 	public ShowHeader HeaderDisplay
 	{
@@ -168,9 +268,7 @@ internal class TableShapeParameter(
 		[.. TableModel.Cells.SelectMany(c => c)];
 
 	public TableShapeParameter()
-		: this(null)
-	{
-	}
+		: this(null) { }
 
 	public override IEnumerable<string> CreateMaskExoFilter(
 		int keyFrameIndex,
@@ -227,6 +325,7 @@ internal class TableShapeParameter(
 			RowCount,
 			ColumnCount,
 			TableModel,
+			CellFontSize,
 			.. Cells,
 			//.. TableModel.RowBoundaries,
 			//.. TableModel.ColumnBoundaries,
