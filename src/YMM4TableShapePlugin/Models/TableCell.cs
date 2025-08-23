@@ -298,6 +298,7 @@ public sealed class TableCell
 			IsFontItalic = IsFontItalic,
 			TextStyle = TextStyle,
 			FontOutlineColor = FontOutlineColor,
+			StylePriority = StylePriority,
 			Text = Text,
 		};
 	}
@@ -323,6 +324,7 @@ public sealed class TableCell
 			&& IsFontItalic == other.IsFontItalic
 			&& FontColor == other.FontColor
 			&& TextStyle == other.TextStyle
+			&& StylePriority == other.StylePriority
 			&& FontOutlineColor == other.FontOutlineColor
 			&& string.Equals(
 				Text,
@@ -359,7 +361,8 @@ public sealed class TableCell
 				TextStyle,
 				FontOutlineColor,
 				IsFontBold,
-				IsFontItalic
+				IsFontItalic,
+				StylePriority
 			)
 		);
 	}
