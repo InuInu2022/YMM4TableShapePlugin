@@ -150,6 +150,8 @@ public sealed class TableCell
 	}
 	bool isFontItalic;
 
+
+
 	public required int Row { get; init; }
 	public required int Col { get; init; }
 	public int RowSpan

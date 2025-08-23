@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.ComponentModel.DataAnnotations;
 using System.Windows.Media;
 using Vortice.Direct2D1;
 using Vortice.DirectWrite;
@@ -34,9 +35,8 @@ internal partial class TableShapeSource
 		Color BackgroundColor,
 		double OuterBorderWidth,
 		Color OuterBorderColor,
-		bool IsShowHeaderRow,
+		ShowHeader HeaderDisplay,
 		Color HeaderRowBackgroundColor,
-		bool IsShowHeaderColumn,
 		Color HeaderColumnBackgroundColor
 	);
 
@@ -100,12 +100,16 @@ internal partial class TableShapeSource
 		IDWriteFactory? WriteFactory,
 		double Width,
 		double Height,
+		[Range(1, int.MaxValue)]
 		int RowCount,
+		[Range(1, int.MaxValue)]
 		int ColCount,
 		float RealOuterWidth,
 		float OuterMargin,
 		Color BackgroundColor,
 		Color BorderColor,
-		Color OuterBorderColor
+		Color OuterBorderColor,
+		Color? HeaderRowBackgroundColor = null,
+		Color? HeaderColumnBackgroundColor = null
 	);
 }

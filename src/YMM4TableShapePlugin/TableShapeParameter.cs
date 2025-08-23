@@ -112,34 +112,15 @@ internal class TableShapeParameter(
 
 	[Display(
 		GroupName = "外観/ヘッダー",
-		Name = "ヘッダー行"
-	)]
-	[ToggleSlider]
-	public bool IsShowHeaderRow
-	{
-		get => _isShowHeaderRow;
-		set => Set(ref _isShowHeaderRow, value);
-	}
-	bool _isShowHeaderRow;
-
-	[Display(
-		GroupName = "外観/ヘッダー",
-		Name = "ヘッダー列"
-	)]
-	[ToggleSlider]
-	public bool IsShowHeaderColumn
-	{
-		get => _isShowHeaderColumn;
-		set => Set(ref _isShowHeaderColumn, value);
-	}
-	bool _isShowHeaderColumn;
-
-	[Display(
-		GroupName = "外観/ヘッダー",
-		Name = "ヘッダー行背景色"
+		Name = "ヘッダー行背景色",
+		Order = 200
 	)]
 	[ColorPicker]
-	//[ShowPropertyEditorWhen(nameof(IsShowHeaderRow), true)]
+	[DefaultValue(typeof(Color), nameof(Colors.LightGray))]
+	[ShowPropertyEditorWhen(
+		nameof(HeaderDisplay),
+		ShowHeader.RowHeader | ShowHeader.BothHeader
+	)]
 	public Color HeaderRowBackgroundColor
 	{
 		get => _headerRowBackgroundColor;
@@ -149,9 +130,11 @@ internal class TableShapeParameter(
 
 	[Display(
 		GroupName = "外観/ヘッダー",
-		Name = "ヘッダー列背景色"
+		Name = "ヘッダー列背景色",
+		Order = 200
 	)]
 	[ColorPicker]
+	[DefaultValue(typeof(Color), nameof(Colors.LightGray))]
 	[ShowPropertyEditorWhen(
 		nameof(HeaderDisplay),
 		ShowHeader.ColumnHeader | ShowHeader.BothHeader

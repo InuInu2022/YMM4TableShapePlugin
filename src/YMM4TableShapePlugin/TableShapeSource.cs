@@ -11,6 +11,9 @@ using YukkuriMovieMaker.Plugin.Shape;
 using System.Numerics;
 using System.Diagnostics;
 using Vortice.Mathematics;
+using System.Reflection.Metadata;
+using System.Diagnostics.CodeAnalysis;
+using static YMM4TableShapePlugin.TableShapeSource;
 
 namespace YMM4TableShapePlugin;
 
@@ -136,9 +139,8 @@ internal partial class TableShapeSource : IShapeSource2
 			BorderWidth: borderWidth,
 			OuterBorderWidth: outerBorderWidth,
 			OuterBorderColor: outerBorderColor,
-			IsShowHeaderRow: Parameter.IsShowHeaderRow,
+			HeaderDisplay: Parameter.HeaderDisplay,
 			HeaderRowBackgroundColor: Parameter.HeaderRowBackgroundColor,
-			IsShowHeaderColumn: Parameter.IsShowHeaderColumn,
 			HeaderColumnBackgroundColor: Parameter.HeaderColumnBackgroundColor
 		);
 		var currentListCache = new TableDrawCollections(
@@ -178,9 +180,9 @@ internal partial class TableShapeSource : IShapeSource2
 				borderWidth,
 				outerBorderWidth,
 				Devices.DeviceContext,
-				null, // CellBackgroundBrushはDrawTableCells内で生成
-				null, // TextBrushも同様
-				null, // WriteFactoryも同様
+				CellBackgroundBrush: null, // CellBackgroundBrushはDrawTableCells内で生成
+				TextBrush: null, // TextBrushも同様
+				WriteFactory: null, // WriteFactoryも同様
 				Width: width,
 				Height: height,
 				RowCount: row,
@@ -190,7 +192,9 @@ internal partial class TableShapeSource : IShapeSource2
 					/ 2f,
 				bgColor,
 				borderColor,
-				outerBorderColor
+				outerBorderColor,
+				Parameter.HeaderRowBackgroundColor,
+				Parameter.HeaderColumnBackgroundColor
 			)
 		);
 
@@ -283,32 +287,8 @@ internal partial class TableShapeSource : IShapeSource2
 		var ctx = Devices.DeviceContext;
 
 		// outerBorderBrushキャッシュ（色・太さ変更時のみ再生成）
-		if (
-			cachedOuterBorderBrush is null
-			|| cachedOuterBorderColor
-				!= context.OuterBorderColor
-			|| cachedOuterBorderWidth
-				!= (float)context.OuterBorderWidth
-		)
-		{
-			disposer.RemoveAndDispose(
-				ref cachedOuterBorderBrush
-			);
-			cachedOuterBorderBrush =
-				ctx.CreateSolidColorBrush(
-					new(
-						context.OuterBorderColor.R,
-						context.OuterBorderColor.G,
-						context.OuterBorderColor.B,
-						context.OuterBorderColor.A
-					)
-				);
-			disposer.Collect(cachedOuterBorderBrush);
-			cachedOuterBorderColor =
-				context.OuterBorderColor;
-			cachedOuterBorderWidth = (float)
-				context.OuterBorderWidth;
-		}
+		CacheOuterBorderProperties(context);
+		//TODO: borderBrushキャッシュ
 
 		if (commandList is not null)
 		{
@@ -334,13 +314,60 @@ internal partial class TableShapeSource : IShapeSource2
 			)
 		);
 		var outerBorderBrush = cachedOuterBorderBrush;
-		var textBrush = ctx.CreateSolidColorBrush(
-			new(0f, 0f, 0f, 1f)
-		);
-		disposer.Collect(textBrush);
+		var headerRowBackgroundBrush =
+			context.HeaderRowBackgroundColor is not null
+				? ctx.CreateSolidColorBrush(
+					new(
+						context
+							.HeaderRowBackgroundColor
+							.Value
+							.R,
+						context
+							.HeaderRowBackgroundColor
+							.Value
+							.G,
+						context
+							.HeaderRowBackgroundColor
+							.Value
+							.B,
+						context
+							.HeaderRowBackgroundColor
+							.Value
+							.A
+					)
+				)
+				: null;
+		var headerColumnBackgroundBrush =
+			context.HeaderColumnBackgroundColor is not null
+				? ctx.CreateSolidColorBrush(
+					new(
+						context
+							.HeaderColumnBackgroundColor
+							.Value
+							.R,
+						context
+							.HeaderColumnBackgroundColor
+							.Value
+							.G,
+						context
+							.HeaderColumnBackgroundColor
+							.Value
+							.B,
+						context
+							.HeaderColumnBackgroundColor
+							.Value
+							.A
+					)
+				)
+				: null;
+
 		disposer.Collect(cellBgBrush);
 		disposer.Collect(borderBrush);
 		disposer.Collect(outerBorderBrush);
+		if (headerRowBackgroundBrush is not null)
+			disposer.Collect(headerRowBackgroundBrush);
+		if (headerColumnBackgroundBrush is not null)
+			disposer.Collect(headerColumnBackgroundBrush);
 
 		using var dwFactory =
 			DWrite.DWriteCreateFactory<IDWriteFactory>(
@@ -349,16 +376,17 @@ internal partial class TableShapeSource : IShapeSource2
 
 		ctx.Target = commandList;
 		ctx.BeginDraw();
-		ctx.Clear(null);
+		ctx.Clear(clearColor: null);
 
 		// セル背景・テキスト描画
 		RenderTableCells(
 			context with
 			{
 				CellBackgroundBrush = cellBgBrush,
-				TextBrush = textBrush,
 				WriteFactory = dwFactory,
-			}
+			},
+			headerRowBackgroundBrush,
+			headerColumnBackgroundBrush
 		);
 
 		//一番外側のテーブルの外枠線(OuterBorder)+セルの内枠線
@@ -386,6 +414,39 @@ internal partial class TableShapeSource : IShapeSource2
 		ctx.EndDraw();
 		ctx.Target = null;
 		commandList.Close();
+	}
+
+	[MemberNotNull(nameof(cachedOuterBorderBrush))]
+	void CacheOuterBorderProperties(
+		TableRenderContext context
+	)
+	{
+		if (
+			cachedOuterBorderBrush is null
+			|| cachedOuterBorderColor
+				!= context.OuterBorderColor
+			|| cachedOuterBorderWidth
+				!= (float)context.OuterBorderWidth
+		)
+		{
+			disposer.RemoveAndDispose(
+				ref cachedOuterBorderBrush
+			);
+			cachedOuterBorderBrush =
+				context.DeviceContext.CreateSolidColorBrush(
+					new(
+						context.OuterBorderColor.R,
+						context.OuterBorderColor.G,
+						context.OuterBorderColor.B,
+						context.OuterBorderColor.A
+					)
+				);
+			disposer.Collect(cachedOuterBorderBrush);
+			cachedOuterBorderColor =
+				context.OuterBorderColor;
+			cachedOuterBorderWidth = (float)
+				context.OuterBorderWidth;
+		}
 	}
 
 	/// <summary>
@@ -539,8 +600,15 @@ internal partial class TableShapeSource : IShapeSource2
 	const string DefaultFontName = "Yu Gothic UI";
 	const float DefaultFontSize = 34f;
 
-	private static void RenderTableCells(
-		TableRenderContext ctx
+	[System.Diagnostics.CodeAnalysis.SuppressMessage(
+		"Usage",
+		"SMA0040:Missing Using Statement",
+		Justification = "<保留中>"
+	)]
+	void RenderTableCells(
+		TableRenderContext ctx,
+		ID2D1SolidColorBrush? headerRowBackgroundBrush,
+		ID2D1SolidColorBrush? headerColumnBackgroundBrush
 	)
 	{
 		for (var r = 0; r < ctx.RowCount; r++)
@@ -567,13 +635,18 @@ internal partial class TableShapeSource : IShapeSource2
 					ctx.Height,
 					ctx.RealOuterWidth
 				);
-
-				// セル背景
 				ctx.DeviceContext.FillRectangle(
 					cellRect,
-					ctx.CellBackgroundBrush!
+					GetCellBackgroundBrush(
+						ctx,
+						r,
+						c,
+						headerRowBackgroundBrush,
+						headerColumnBackgroundBrush
+					)
 				);
 
+				// セル内文字
 				var padding = 4f;
 
 				var leftText =
@@ -695,6 +768,44 @@ internal partial class TableShapeSource : IShapeSource2
 				);
 			}
 		}
+	}
+
+	[SuppressMessage(
+		"Usage",
+		"SMA0040:Missing Using Statement",
+		Justification = "<保留中>"
+	)]
+	ID2D1SolidColorBrush GetCellBackgroundBrush(
+		TableRenderContext ctx,
+		int r,
+		int c,
+		ID2D1SolidColorBrush? headerRowBackgroundBrush,
+		ID2D1SolidColorBrush? headerColumnBackgroundBrush
+	)
+	{
+		// セル背景
+		return (
+			Parameter.HeaderDisplay,
+			isHeaderRow: r == 0,
+			isHeaderCol: c == 0
+		) switch
+		{
+			(
+				ShowHeader.RowHeader
+					or ShowHeader.BothHeader,
+				true,
+				_
+			) => headerRowBackgroundBrush
+				?? ctx.CellBackgroundBrush!,
+			(
+				ShowHeader.ColumnHeader
+					or ShowHeader.BothHeader,
+				_,
+				true
+			) => headerColumnBackgroundBrush
+				?? ctx.CellBackgroundBrush!,
+			(_, _, _) => ctx.CellBackgroundBrush!,
+		};
 	}
 
 	//TODO: 行列の線ごとに制御点を作成する

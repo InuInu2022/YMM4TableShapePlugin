@@ -4,18 +4,17 @@ using System.Reflection;
 namespace YMM4TableShapePlugin.Models;
 
 [Obfuscation(Exclude = true, ApplyToMembers = true)]
-[System.Flags]
 public enum ShowHeader
 {
 	[Display(Name = "なし")]
-	None = 0,
+	None = 99,
 
 	[Display(Name = "行ヘッダー")]
-	RowHeader,
+	RowHeader = 1,
 
 	[Display(Name = "列ヘッダー")]
-	ColumnHeader,
+	ColumnHeader = 2,
 
 	[Display(Name = "両方ヘッダー")]
-	BothHeader,
+	BothHeader = 4,
 }
