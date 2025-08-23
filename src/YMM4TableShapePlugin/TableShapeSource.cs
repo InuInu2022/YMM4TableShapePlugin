@@ -779,27 +779,56 @@ internal partial class TableShapeSource : IShapeSource2
 						_ => ParagraphAlignment.Near,
 					};
 
-				ctx.DeviceContext.DrawText(
-					cell.Text,
-					textFormat,
-					textRect,
-					ctx.DeviceContext!.CreateSolidColorBrush(
-						new(
-							red: cell.FontColor.R,
-							green: cell.FontColor.G,
-							blue: cell.FontColor.B,
-							alpha: cell.FontColor.A
-						)
-					)
-				);
+				if (
+					cell.TextStyle
+						== CellTextStyle.ShapedBorder
+					|| cell.TextStyle
+						== CellTextStyle.RoundedBorder
+				)
+				{
+					//TODO: Draw outlined text
+				}
+				else if (
+					cell.TextStyle == CellTextStyle.Normal
+				)
+				{
+					ctx.DeviceContext.DrawText(
+						cell.Text,
+						textFormat,
+						textRect,
+						GetTextBrush(cell.FontColor)
+					);
+				}
 			}
 		}
 	}
 
+	readonly Dictionary<
+		(byte R, byte G, byte B, byte A),
+		ID2D1SolidColorBrush
+	> textBrushCache = new();
+
+	[SuppressMessage("Usage", "SMA0040")]
+	ID2D1SolidColorBrush GetTextBrush(
+		System.Windows.Media.Color color
+	)
+	{
+		var key = (color.R, color.G, color.B, color.A);
+		if (!textBrushCache.TryGetValue(key, out var brush))
+		{
+			brush =
+				Devices.DeviceContext.CreateSolidColorBrush(
+					new(color.R, color.G, color.B, color.A)
+				);
+			textBrushCache[key] = brush;
+			disposer.Collect(brush);
+		}
+		return brush;
+	}
+
 	[SuppressMessage(
 		"Usage",
-		"SMA0040:Missing Using Statement",
-		Justification = "<保留中>"
+		"SMA0040"
 	)]
 	ID2D1SolidColorBrush GetCellBackgroundBrush(
 		TableRenderContext ctx,

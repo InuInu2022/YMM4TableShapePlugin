@@ -9,6 +9,7 @@ using Vortice.DirectWrite;
 
 using YukkuriMovieMaker.Commons;
 using YukkuriMovieMaker.Controls;
+using YukkuriMovieMaker.ItemEditor.CustomVisibilityAttributes;
 using YukkuriMovieMaker.Resources.Localization;
 
 namespace YMM4TableShapePlugin.Models;
@@ -111,6 +112,40 @@ public sealed class TableCell
 		}
 	}
 	private Color _fontColor = Colors.Black;
+
+	[Display(
+		GroupName = "セル",
+		Name = "文字装飾",
+		Description = ""
+	)]
+	[EnumComboBox]
+	public CellTextStyle TextStyle
+	{
+		get => _cellTextStyle;
+		set { Set(ref _cellTextStyle, value); }
+	}
+	CellTextStyle _cellTextStyle = CellTextStyle.Normal;
+
+	[Display(
+		GroupName = "セル",
+		Name = "装飾色",
+		Description = ""
+	)]
+	[ColorPicker(
+		PropertyEditorSize = PropertyEditorSize.Half
+	)]
+	[ShowPropertyEditorWhen(
+		nameof(TextStyle),
+		CellTextStyle.ShapedBorder
+			| CellTextStyle.RoundedBorder
+	)]
+	public Color FontOutlineColor
+	{
+		get => _fontOutlineColor;
+		set { Set(ref _fontOutlineColor, value); }
+	}
+	private Color _fontOutlineColor = Colors.White;
+
 	private int _rowSpan = 1;
 	private int _colSpan = 1;
 	private CellContentAlign _textAlign =
@@ -216,6 +251,10 @@ public sealed class TableCell
 			ParentCell = ParentCell?.Clone() as TableCell,
 			Font = Font,
 			FontColor = FontColor,
+			IsFontBold = IsFontBold,
+			IsFontItalic = IsFontItalic,
+			TextStyle = TextStyle,
+			FontOutlineColor = FontOutlineColor,
 			Text = Text,
 		};
 	}
@@ -237,7 +276,11 @@ public sealed class TableCell
 				other.Font,
 				StringComparison.OrdinalIgnoreCase
 			)
+			&& IsFontBold == other.IsFontBold
+			&& IsFontItalic == other.IsFontItalic
 			&& FontColor == other.FontColor
+			&& TextStyle == other.TextStyle
+			&& FontOutlineColor == other.FontOutlineColor
 			&& string.Equals(
 				Text,
 				other.Text,
@@ -257,15 +300,24 @@ public sealed class TableCell
 	)]
 	public override int GetHashCode()
 	{
+		// HashCode.Combineは最大8引数までなのでネストして全プロパティをカバー
 		return HashCode.Combine(
-			Col,
-			Row,
-			RowSpan,
-			ColSpan,
-			ParentCell,
-			Font,
-			FontColor,
-			Text
+			HashCode.Combine(
+				Col,
+				Row,
+				RowSpan,
+				ColSpan,
+				ParentCell,
+				Font,
+				FontColor,
+				Text
+			),
+			HashCode.Combine(
+				TextStyle,
+				FontOutlineColor,
+				IsFontBold,
+				IsFontItalic
+			)
 		);
 	}
 }
