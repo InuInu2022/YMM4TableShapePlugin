@@ -97,7 +97,9 @@ public sealed class TableCell
 		Name = "文字色",
 		Description = ""
 	)]
-	[ColorPicker]
+	[ColorPicker(
+		PropertyEditorSize = PropertyEditorSize.Half
+	)]
 	public Color FontColor
 	{
 		get => _fontColor;

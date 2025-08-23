@@ -69,7 +69,9 @@ internal class TableShapeParameter(
 		new(0, 0, 100000);
 
 	[Display(GroupName = "外観", Name = "枠の色")]
-	[ColorPicker]
+	[ColorPicker(
+		PropertyEditorSize = PropertyEditorSize.Half
+	)]
 	public Color BorderColor
 	{
 		get => _borderColor;
@@ -78,7 +80,9 @@ internal class TableShapeParameter(
 	private Color _borderColor = Colors.Black;
 
 	[Display(GroupName = "外観", Name = "外枠の色")]
-	[ColorPicker]
+	[ColorPicker(
+		PropertyEditorSize = PropertyEditorSize.Half
+	)]
 	public Color OuterBorderColor
 	{
 		get => _outerBorderColor;
@@ -87,7 +91,9 @@ internal class TableShapeParameter(
 	private Color _outerBorderColor = Colors.White;
 
 	[Display(GroupName = "外観", Name = "背景色")]
-	[ColorPicker]
+	[ColorPicker(
+		PropertyEditorSize = PropertyEditorSize.Half
+	)]
 	public Color BackgroundColor
 	{
 		get => _backgroundColor;
@@ -100,7 +106,7 @@ internal class TableShapeParameter(
 
 	[Display(
 		GroupName = "ヘッダー",
-		Name = "ヘッダー列強調"
+		Name = "ヘッダー強調"
 	)]
 	[EnumComboBox]
 	public ShowHeader HeaderDisplay
@@ -115,7 +121,9 @@ internal class TableShapeParameter(
 		Name = "ヘッダー行背景色",
 		Order = 200
 	)]
-	[ColorPicker]
+	[ColorPicker(
+		PropertyEditorSize = PropertyEditorSize.Half
+	)]
 	[DefaultValue(typeof(Color), nameof(Colors.LightGray))]
 	[ShowPropertyEditorWhen(
 		nameof(HeaderDisplay),
@@ -133,7 +141,9 @@ internal class TableShapeParameter(
 		Name = "ヘッダー列背景色",
 		Order = 200
 	)]
-	[ColorPicker]
+	[ColorPicker(
+		PropertyEditorSize = PropertyEditorSize.Half
+	)]
 	[DefaultValue(typeof(Color), nameof(Colors.LightGray))]
 	[ShowPropertyEditorWhen(
 		nameof(HeaderDisplay),
