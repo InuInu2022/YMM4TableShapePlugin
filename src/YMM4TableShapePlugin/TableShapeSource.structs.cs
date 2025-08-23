@@ -3,6 +3,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Windows.Media;
 using Vortice.Direct2D1;
 using Vortice.DirectWrite;
+using YMM4TableShapePlugin.Enums;
 using YMM4TableShapePlugin.Models;
 using YukkuriMovieMaker.Commons;
 

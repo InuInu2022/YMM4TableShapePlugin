@@ -14,6 +14,7 @@ using Vortice.Mathematics;
 using System.Reflection.Metadata;
 using System.Diagnostics.CodeAnalysis;
 using static YMM4TableShapePlugin.TableShapeSource;
+using YMM4TableShapePlugin.Enums;
 
 namespace YMM4TableShapePlugin;
 

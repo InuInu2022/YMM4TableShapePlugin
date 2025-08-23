@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 
-namespace YMM4TableShapePlugin.Models;
+namespace YMM4TableShapePlugin.Enums;
 
 [Obfuscation(Exclude = true, ApplyToMembers = true)]
 [Flags]

@@ -1,6 +1,8 @@
 using System.Collections.Immutable;
 using System.Windows.Media;
 
+using YMM4TableShapePlugin.Enums;
+
 using YukkuriMovieMaker.Commons;
 
 namespace YMM4TableShapePlugin.Models;

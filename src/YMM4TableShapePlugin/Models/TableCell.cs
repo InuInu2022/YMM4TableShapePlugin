@@ -7,6 +7,7 @@ using System.Windows.Media;
 
 using Vortice.DirectWrite;
 
+using YMM4TableShapePlugin.Enums;
 using YukkuriMovieMaker.Commons;
 using YukkuriMovieMaker.Controls;
 using YukkuriMovieMaker.ItemEditor.CustomVisibilityAttributes;

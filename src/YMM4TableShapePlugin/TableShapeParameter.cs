@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Windows.Media;
 
+using YMM4TableShapePlugin.Enums;
 using YMM4TableShapePlugin.Models;
 
 using YukkuriMovieMaker.Commons;

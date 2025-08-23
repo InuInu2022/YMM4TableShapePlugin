@@ -1,7 +1,9 @@
 using System.Numerics;
+
 using Vortice.Direct2D1;
 using Vortice.DirectWrite;
-using YMM4TableShapePlugin.Models;
+
+using YMM4TableShapePlugin.Enums;
 
 namespace YMM4TableShapePlugin.Renderers;
 
