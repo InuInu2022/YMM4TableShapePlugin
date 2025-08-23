@@ -78,8 +78,26 @@ public sealed class TableCell
 
 	[Display(
 		GroupName = "セル",
+		Name = "スタイル優先度",
+		Description = "テーブル全体のスタイルに従うか個別に指定するかを選びます。"
+	)]
+	[EnumComboBox]
+	public CellStylePriority StylePriority
+	{
+		get => _stylePriority;
+		set { Set(ref _stylePriority, value); }
+	}
+	CellStylePriority _stylePriority =
+		CellStylePriority.Inherit;
+
+	[Display(
+		GroupName = "セル",
 		Name = "フォント",
 		Description = ""
+	)]
+	[ShowPropertyEditorWhen(
+		nameof(StylePriority),
+		CellStylePriority.Override
 	)]
 	[FontComboBox]
 	public string Font
@@ -99,6 +117,10 @@ public sealed class TableCell
 		Name = "文字色",
 		Description = ""
 	)]
+	[ShowPropertyEditorWhen(
+		nameof(StylePriority),
+		CellStylePriority.Override
+	)]
 	[ColorPicker(
 		PropertyEditorSize = PropertyEditorSize.Half
 	)]
@@ -116,8 +138,31 @@ public sealed class TableCell
 
 	[Display(
 		GroupName = "セル",
+		Name = "装飾色",
+		Description = ""
+	)]
+	[ShowPropertyEditorWhen(
+		nameof(StylePriority),
+		CellStylePriority.Override
+	)]
+	[ColorPicker(
+		PropertyEditorSize = PropertyEditorSize.Half
+	)]
+	public Color FontOutlineColor
+	{
+		get => _fontOutlineColor;
+		set { Set(ref _fontOutlineColor, value); }
+	}
+	private Color _fontOutlineColor = Colors.White;
+
+	[Display(
+		GroupName = "セル",
 		Name = "文字装飾",
 		Description = ""
+	)]
+	[ShowPropertyEditorWhen(
+		nameof(StylePriority),
+		CellStylePriority.Override
 	)]
 	[EnumComboBox]
 	public CellTextStyle TextStyle
@@ -127,35 +172,18 @@ public sealed class TableCell
 	}
 	CellTextStyle _cellTextStyle = CellTextStyle.Normal;
 
-	[Display(
-		GroupName = "セル",
-		Name = "装飾色",
-		Description = ""
-	)]
-	[ColorPicker(
-		PropertyEditorSize = PropertyEditorSize.Half
-	)]
-	[ShowPropertyEditorWhen(
-		nameof(TextStyle),
-		CellTextStyle.ShapedBorder
-			| CellTextStyle.RoundedBorder
-	)]
-	public Color FontOutlineColor
-	{
-		get => _fontOutlineColor;
-		set { Set(ref _fontOutlineColor, value); }
-	}
-	private Color _fontOutlineColor = Colors.White;
-
 	private int _rowSpan = 1;
 	private int _colSpan = 1;
-	private CellContentAlign _textAlign =
-		CellContentAlign.MiddleCenter;
+
 
 	[Display(
 		GroupName = "セル",
 		Name = "サイズ",
 		Description = ""
+	)]
+	[ShowPropertyEditorWhen(
+		nameof(StylePriority),
+		CellStylePriority.Override
 	)]
 	[AnimationSlider("F1", "", 1, 50)]
 	[DefaultValue(34)]
@@ -167,6 +195,10 @@ public sealed class TableCell
 		GroupName = "セル",
 		Name = "太字",
 		Description = ""
+	)]
+	[ShowPropertyEditorWhen(
+		nameof(StylePriority),
+		CellStylePriority.Override
 	)]
 	[ToggleSlider]
 	public bool IsFontBold
@@ -180,6 +212,10 @@ public sealed class TableCell
 		GroupName = "セル",
 		Name = "イタリック",
 		Description = ""
+	)]
+	[ShowPropertyEditorWhen(
+		nameof(StylePriority),
+		CellStylePriority.Override
 	)]
 	[ToggleSlider]
 	public bool IsFontItalic
@@ -219,6 +255,10 @@ public sealed class TableCell
 		Name = "テキストの配置",
 		Description = ""
 	)]
+	[ShowPropertyEditorWhen(
+		nameof(StylePriority),
+		CellStylePriority.Override
+	)]
 	[EnumComboBox]
 	public CellContentAlign TextAlign
 	{
@@ -230,6 +270,8 @@ public sealed class TableCell
 			EndEditAsync().AsTask().Wait();
 		}
 	}
+	private CellContentAlign _textAlign =
+		CellContentAlign.MiddleCenter;
 
 	public TableCell? ParentCell { get; set; }
 

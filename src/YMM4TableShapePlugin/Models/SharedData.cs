@@ -21,10 +21,19 @@ internal class SharedData
 	Color OuterBorderColor { get; }
 	Color BackgroundColor { get; }
 
+	string CellFont { get; }
+	Animation CellFontSize { get; } = new(34, 1, 1000);
+	Color CellFontColor { get; }
+	Color CellFontOutlineColor { get; }
+	CellContentAlign CellTextAlign { get; }
+	bool IsCellFontBold { get; }
+	bool IsCellFontItalic { get; }
+
 	TableModel TableModel { get; }
 	ShowHeader HeaderDisplay { get; }
 	Color HeaderRowBackgroundColor { get; }
 	Color HeaderColumnBackgroundColor { get; }
+
 
 	// TableModelから区切り情報を取得
 	public ImmutableList<Animation> RowBoundaries { get; }
@@ -43,6 +52,15 @@ internal class SharedData
 		BorderColor = parameter.BorderColor;
 		OuterBorderColor = parameter.OuterBorderColor;
 		BackgroundColor = parameter.BackgroundColor;
+
+		CellFont = parameter.CellFont;
+		CellFontSize?.CopyFrom(parameter.CellFontSize);
+		CellFontColor = parameter.CellFontColor;
+		CellFontOutlineColor =
+			parameter.CellFontOutlineColor;
+		CellTextAlign = parameter.CellTextAlign;
+		IsCellFontBold = parameter.IsCellFontBold;
+		IsCellFontItalic = parameter.IsCellFontItalic;
 
 		HeaderDisplay = parameter.HeaderDisplay;
 		HeaderRowBackgroundColor =
@@ -70,6 +88,15 @@ internal class SharedData
 		parameter.BorderColor = BorderColor;
 		parameter.OuterBorderColor = OuterBorderColor;
 		parameter.BackgroundColor = BackgroundColor;
+
+		parameter.CellFont = CellFont;
+		parameter.CellFontSize?.CopyFrom(CellFontSize);
+		parameter.CellFontColor = CellFontColor;
+		parameter.CellFontOutlineColor =
+			CellFontOutlineColor;
+		parameter.CellTextAlign = CellTextAlign;
+		parameter.IsCellFontBold = IsCellFontBold;
+		parameter.IsCellFontItalic = IsCellFontItalic;
 
 		parameter.HeaderDisplay = HeaderDisplay;
 		parameter.HeaderRowBackgroundColor =
