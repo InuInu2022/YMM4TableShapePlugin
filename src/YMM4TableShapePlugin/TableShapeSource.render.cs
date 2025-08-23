@@ -145,6 +145,58 @@ internal partial class TableShapeSource : IShapeSource2
 		commandList.Close();
 	}
 
+	// セルスタイル決定用メソッド
+	// CellStyle型は存在しないため、必要なプロパティをValueTupleで返す
+	static (
+		string font,
+		Animation fontSize,
+		System.Windows.Media.Color fontColor,
+		System.Windows.Media.Color fontOutlineColor,
+		CellTextStyle textStyle,
+		CellContentAlign textAlign,
+		bool isFontBold,
+		bool isFontItalic
+	) GetEffectiveCellStyle(
+		Models.TableCell cell,
+		TableShapeParameter param
+	)
+	{
+		// セル個別スタイル優先か共通スタイルかを分岐
+		return cell.StylePriority switch
+		{
+			CellStylePriority.Inherit => (
+				param.CellFont,
+				param.CellFontSize,
+				param.CellFontColor,
+				param.CellFontOutlineColor,
+				param.CellTextStyle,
+				param.CellTextAlign,
+				param.IsCellFontBold,
+				param.IsCellFontItalic
+			),
+			CellStylePriority.Override => (
+				cell.Font,
+				cell.FontSize,
+				cell.FontColor,
+				cell.FontOutlineColor,
+				cell.TextStyle,
+				cell.TextAlign,
+				cell.IsFontBold,
+				cell.IsFontItalic
+			),
+			_ => (
+				param.CellFont,
+				param.CellFontSize,
+				param.CellFontColor,
+				param.CellFontOutlineColor,
+				param.CellTextStyle,
+				param.CellTextAlign,
+				param.IsCellFontBold,
+				param.IsCellFontItalic
+			),
+		};
+	}
+
 	[System.Diagnostics.CodeAnalysis.SuppressMessage(
 		"Usage",
 		"SMA0040:Missing Using Statement",
@@ -164,13 +216,10 @@ internal partial class TableShapeSource : IShapeSource2
 					r >= ctx.Model.Rows
 					|| c >= ctx.Model.Cols
 				)
-				{
 					continue;
-				}
 
 				var cell = ctx.Model.Cells[r][c];
 
-				// ここで座標計算メソッドを利用
 				var cellRect = CalculateCellRect(
 					r,
 					c,
@@ -191,7 +240,104 @@ internal partial class TableShapeSource : IShapeSource2
 					)
 				);
 
-				// セル内文字
+				// --- ここからスタイル決定 ---
+				var (
+					fontFamily,
+					fontSizeAnim,
+					fontColor,
+					fontOutlineColor,
+					textStyle,
+					textAlign,
+					isFontBold,
+					isFontItalic
+				) = GetEffectiveCellStyle(
+					cell,
+					Parameter
+				);
+
+				var fSize = (float)
+					fontSizeAnim.GetValue(
+						ctx.Frame,
+						ctx.Length,
+						ctx.Fps
+					);
+				var fontFamilyName = !string.IsNullOrEmpty(
+					fontFamily
+				)
+					? fontFamily
+					: DefaultFontName;
+				var fontSize =
+					fSize > 0f ? fSize : DefaultFontSize;
+				var fontStretch = FontStretch.Normal;
+				var fontStyle = isFontItalic
+					? FontStyle.Italic
+					: FontStyle.Normal;
+				var fontWeight = isFontBold
+					? FontWeight.Bold
+					: FontWeight.Normal;
+
+				var key = (
+					fontFamilyName,
+					fontSize,
+					fontStretch,
+					fontStyle,
+					fontWeight
+				);
+
+				if (
+					!textFormatCache.TryGetValue(
+						key,
+						out var textFormat
+					)
+				)
+				{
+					textFormat =
+						ctx.WriteFactory!.CreateTextFormat(
+							fontFamilyName: fontFamilyName,
+							fontSize: fontSize,
+							fontStretch: fontStretch,
+							fontStyle: fontStyle,
+							fontWeight: fontWeight
+						);
+					textFormatCache[key] = textFormat;
+					disposer.Collect(textFormat);
+				}
+
+				textFormat.TextAlignment =
+					textAlign switch
+					{
+						CellContentAlign.TopLeft
+						or CellContentAlign.MiddleLeft
+						or CellContentAlign.BottomLeft =>
+							TextAlignment.Leading,
+						CellContentAlign.TopCenter
+						or CellContentAlign.MiddleCenter
+						or CellContentAlign.BottomCenter =>
+							TextAlignment.Center,
+						CellContentAlign.TopRight
+						or CellContentAlign.MiddleRight
+						or CellContentAlign.BottomRight =>
+							TextAlignment.Trailing,
+						_ => TextAlignment.Leading,
+					};
+				textFormat.ParagraphAlignment =
+					textAlign switch
+					{
+						CellContentAlign.TopLeft
+						or CellContentAlign.TopCenter
+						or CellContentAlign.TopRight =>
+							ParagraphAlignment.Near,
+						CellContentAlign.MiddleLeft
+						or CellContentAlign.MiddleCenter
+						or CellContentAlign.MiddleRight =>
+							ParagraphAlignment.Center,
+						CellContentAlign.BottomLeft
+						or CellContentAlign.BottomCenter
+						or CellContentAlign.BottomRight =>
+							ParagraphAlignment.Far,
+						_ => ParagraphAlignment.Near,
+					};
+
 				var padding = 4f;
 				var leftText = cellRect.Left + padding;
 				var topText = cellRect.Top + padding;
@@ -210,91 +356,10 @@ internal partial class TableShapeSource : IShapeSource2
 					heightText
 				);
 
-				var fSize = (float)
-					cell.FontSize.GetValue(
-						ctx.Frame,
-						ctx.Length,
-						ctx.Fps
-					);
-				var fontFamily = cell.Font is not ""
-					? cell.Font
-					: DefaultFontName;
-				var fontSize =
-					fSize > 0f ? fSize : DefaultFontSize;
-				var fontStretch = FontStretch.Normal;
-				var fontStyle = cell.IsFontItalic
-					? FontStyle.Italic
-					: FontStyle.Normal;
-				var fontWeight = cell.IsFontBold
-					? FontWeight.Bold
-					: FontWeight.Normal;
-
-				var key = (
-					fontFamily,
-					fontSize,
-					fontStretch,
-					fontStyle,
-					fontWeight
-				);
-
 				if (
-					!textFormatCache.TryGetValue(
-						key,
-						out var textFormat
-					)
-				)
-				{
-					textFormat =
-						ctx.WriteFactory!.CreateTextFormat(
-							fontFamilyName: fontFamily,
-							fontSize: fontSize,
-							fontStretch: fontStretch,
-							fontStyle: fontStyle,
-							fontWeight: fontWeight
-						);
-					textFormatCache[key] = textFormat;
-					disposer.Collect(textFormat);
-				}
-
-				textFormat.TextAlignment =
-					cell.TextAlign switch
-					{
-						CellContentAlign.TopLeft
-						or CellContentAlign.MiddleLeft
-						or CellContentAlign.BottomLeft =>
-							TextAlignment.Leading,
-						CellContentAlign.TopCenter
-						or CellContentAlign.MiddleCenter
-						or CellContentAlign.BottomCenter =>
-							TextAlignment.Center,
-						CellContentAlign.TopRight
-						or CellContentAlign.MiddleRight
-						or CellContentAlign.BottomRight =>
-							TextAlignment.Trailing,
-						_ => TextAlignment.Leading,
-					};
-				textFormat.ParagraphAlignment =
-					cell.TextAlign switch
-					{
-						CellContentAlign.TopLeft
-						or CellContentAlign.TopCenter
-						or CellContentAlign.TopRight =>
-							ParagraphAlignment.Near,
-						CellContentAlign.MiddleLeft
-						or CellContentAlign.MiddleCenter
-						or CellContentAlign.MiddleRight =>
-							ParagraphAlignment.Center,
-						CellContentAlign.BottomLeft
-						or CellContentAlign.BottomCenter
-						or CellContentAlign.BottomRight =>
-							ParagraphAlignment.Far,
-						_ => ParagraphAlignment.Near,
-					};
-
-				if (
-					cell.TextStyle
+					textStyle
 						== CellTextStyle.ShapedBorder
-					|| cell.TextStyle
+					|| textStyle
 						== CellTextStyle.RoundedBorder
 				)
 				{
@@ -313,32 +378,32 @@ internal partial class TableShapeSource : IShapeSource2
 						textRect.Top
 					);
 
-					// グリフアウトライン描画
 					textLayout.Draw(
 						nint.Zero,
 						new Renderers.OutlineTextRenderer(
 							ctx.DeviceContext,
 							GetTextBrush(
-								cell.FontOutlineColor
+								fontOutlineColor
 							),
-							GetTextBrush(cell.FontColor),
+							GetTextBrush(fontColor),
 							origin,
 							outlineWidth,
-							cell.TextStyle
+							textStyle
 						),
 						0.0f,
 						0.0f
 					);
 				}
 				else if (
-					cell.TextStyle == CellTextStyle.Normal
+					textStyle
+					== CellTextStyle.Normal
 				)
 				{
 					ctx.DeviceContext.DrawText(
 						cell.Text,
 						textFormat,
 						textRect,
-						GetTextBrush(cell.FontColor)
+						GetTextBrush(fontColor)
 					);
 				}
 			}

@@ -10,7 +10,7 @@ namespace YMM4TableShapePlugin.Enums;
 [Flags]
 public enum CellStylePriority
 {
-	[Display(Name = "テーブル全体に従う")]
+	[Display(Name = "テーブル共通に従う")]
 	Inherit = 1,
 
 	[Display(Name = "個別に上書きする")]

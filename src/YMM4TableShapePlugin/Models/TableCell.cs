@@ -78,8 +78,8 @@ public sealed class TableCell
 
 	[Display(
 		GroupName = "セル",
-		Name = "スタイル優先度",
-		Description = "テーブル全体のスタイルに従うか個別に指定するかを選びます。"
+		Name = "セルスタイル",
+		Description = "テーブル共通のスタイルに従うか個別に指定するかを選びます。"
 	)]
 	[EnumComboBox]
 	public CellStylePriority StylePriority
