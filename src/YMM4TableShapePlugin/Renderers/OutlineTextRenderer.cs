@@ -1,6 +1,7 @@
 using System.Numerics;
 using Vortice.Direct2D1;
 using Vortice.DirectWrite;
+using YMM4TableShapePlugin.Models;
 
 namespace YMM4TableShapePlugin.Renderers;
 
@@ -9,7 +10,8 @@ internal class OutlineTextRenderer(
 	ID2D1Brush outlineBrush,
 	ID2D1Brush fillBrush,
 	Vector2 origin,
-	float outlineWidth
+	float outlineWidth,
+	CellTextStyle textStyle // 追加
 ) : TextRendererBase
 {
 	readonly ID2D1DeviceContext deviceContext =
@@ -18,6 +20,7 @@ internal class OutlineTextRenderer(
 	readonly ID2D1Brush fillBrush = fillBrush;
 	readonly Vector2 origin = origin;
 	readonly float outlineWidth = outlineWidth;
+	readonly CellTextStyle textStyle = textStyle;
 
 	public override void DrawGlyphRun(
 		IntPtr clientDrawingContext,
@@ -52,10 +55,35 @@ internal class OutlineTextRenderer(
 				origin.Y + baselineOriginY
 			);
 
+		var lineJoin = textStyle switch
+		{
+			CellTextStyle.ShapedBorder =>
+				LineJoin.MiterOrBevel,
+			CellTextStyle.RoundedBorder => LineJoin.Round,
+			_ => LineJoin.MiterOrBevel,
+		};
+		var capStyle = textStyle switch
+		{
+			CellTextStyle.ShapedBorder => CapStyle.Square,
+			CellTextStyle.RoundedBorder => CapStyle.Round,
+			_ => CapStyle.Square,
+		};
+
+		using var strokeStyle =
+			deviceContext.Factory.CreateStrokeStyle(
+				new()
+				{
+					LineJoin = lineJoin,
+					StartCap = capStyle,
+					EndCap = capStyle,
+					DashCap = capStyle,
+				}
+			);
 		deviceContext.DrawGeometry(
 			pathGeometry,
 			outlineBrush,
-			outlineWidth
+			outlineWidth * 2,
+			strokeStyle
 		);
 		deviceContext.FillGeometry(pathGeometry, fillBrush);
 

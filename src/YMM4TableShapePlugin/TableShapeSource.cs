@@ -811,7 +811,8 @@ internal partial class TableShapeSource : IShapeSource2
 							),
 							GetTextBrush(cell.FontColor),
 							origin,
-							outlineWidth
+							outlineWidth,
+							cell.TextStyle
 						),
 						0.0f,
 						0.0f
