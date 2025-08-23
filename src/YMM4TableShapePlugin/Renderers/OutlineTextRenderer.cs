@@ -22,6 +22,24 @@ internal class OutlineTextRenderer(
 	readonly float outlineWidth = outlineWidth;
 	readonly CellTextStyle textStyle = textStyle;
 
+	static readonly StrokeStyleProperties shapedBorderStroke =
+		new()
+		{
+			LineJoin = LineJoin.Miter,
+			StartCap = CapStyle.Square,
+			EndCap = CapStyle.Square,
+			DashCap = CapStyle.Square,
+			MiterLimit = 10.0f,
+		};
+	static readonly StrokeStyleProperties roundedBorderStroke =
+		new()
+		{
+			LineJoin = LineJoin.Round,
+			StartCap = CapStyle.Round,
+			EndCap = CapStyle.Round,
+			DashCap = CapStyle.Round,
+		};
+
 	public override void DrawGlyphRun(
 		IntPtr clientDrawingContext,
 		float baselineOriginX,
@@ -47,7 +65,6 @@ internal class OutlineTextRenderer(
 		);
 		sink.Close();
 
-		// 座標補正: origin + baselineOriginX/Y
 		var originalTransform = deviceContext.Transform;
 		deviceContext.Transform =
 			Matrix3x2.CreateTranslation(
@@ -55,29 +72,18 @@ internal class OutlineTextRenderer(
 				origin.Y + baselineOriginY
 			);
 
-		var lineJoin = textStyle switch
+		var strokeProps = textStyle switch
 		{
 			CellTextStyle.ShapedBorder =>
-				LineJoin.MiterOrBevel,
-			CellTextStyle.RoundedBorder => LineJoin.Round,
-			_ => LineJoin.MiterOrBevel,
-		};
-		var capStyle = textStyle switch
-		{
-			CellTextStyle.ShapedBorder => CapStyle.Square,
-			CellTextStyle.RoundedBorder => CapStyle.Round,
-			_ => CapStyle.Square,
+				shapedBorderStroke,
+			CellTextStyle.RoundedBorder =>
+				roundedBorderStroke,
+			_ => shapedBorderStroke,
 		};
 
 		using var strokeStyle =
 			deviceContext.Factory.CreateStrokeStyle(
-				new()
-				{
-					LineJoin = lineJoin,
-					StartCap = capStyle,
-					EndCap = capStyle,
-					DashCap = capStyle,
-				}
+				strokeProps
 			);
 		deviceContext.DrawGeometry(
 			pathGeometry,
