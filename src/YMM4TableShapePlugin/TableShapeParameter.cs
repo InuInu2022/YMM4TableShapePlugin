@@ -99,7 +99,7 @@ internal class TableShapeParameter(
 	#region header
 
 	[Display(
-		GroupName = "外観/ヘッダー",
+		GroupName = "ヘッダー",
 		Name = "ヘッダー列強調"
 	)]
 	[EnumComboBox]
@@ -111,7 +111,7 @@ internal class TableShapeParameter(
 	ShowHeader _headerDisplay = ShowHeader.None;
 
 	[Display(
-		GroupName = "外観/ヘッダー",
+		GroupName = "ヘッダー",
 		Name = "ヘッダー行背景色",
 		Order = 200
 	)]
@@ -129,7 +129,7 @@ internal class TableShapeParameter(
 	Color _headerRowBackgroundColor = Colors.LightGray;
 
 	[Display(
-		GroupName = "外観/ヘッダー",
+		GroupName = "ヘッダー",
 		Name = "ヘッダー列背景色",
 		Order = 200
 	)]

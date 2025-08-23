@@ -39,15 +39,16 @@ public sealed class TableCell
 		IEquatable<TableCell>
 {
 	[Display(GroupName = "セル", Name = "テキスト")]
-	/*[TextEditor(
+	[TextEditor(
 		AcceptsReturn = true,
 		PropertyEditorSize = PropertyEditorSize.Normal
-	)]*/
+	)]
+	/*
 	[RichTextEditor(
 		DecorationPropertyName = "Decorations",
 		FontPropertyName = "Font",
 		ForegroundPropertyName = "FontColor"
-	)]
+	)]*/
 	public string Text
 	{
 		get => _text;
