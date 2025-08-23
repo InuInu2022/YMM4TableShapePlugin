@@ -13,13 +13,6 @@ internal class SharedData(TableShapeParameter parameter)
 	public ImmutableList<Animation> ColumnBoundaries { get; } =
 		[.. parameter.TableModel.ColumnBoundaries];
 
-	//セルの中身
-	//public ImmutableList<
-	//	ImmutableList<TableCell>
-	//> Cells { get; } = [.. parameter.TableModel.Cells];
-
-
-
 	public void CopyTo(TableShapeParameter parameter)
 	{
 		parameter.TableModel = TableModel;
@@ -32,7 +25,5 @@ internal class SharedData(TableShapeParameter parameter)
 		[
 			.. ColumnBoundaries,
 		];
-		//セルの中身をセット
-		//parameter.TableModel.Cells = [.. Cells];
 	}
 }

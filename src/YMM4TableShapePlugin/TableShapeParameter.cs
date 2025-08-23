@@ -151,6 +151,7 @@ internal class TableShapeParameter(
 	[Display(AutoGenerateField = true)] //機能しない…
 	public TableModel TableModel { get; set; } = new(1, 1);
 
+	//TODO: 独自UIに置き換える
 	[Display(AutoGenerateField = true)]
 	public ImmutableList<Models.TableCell> Cells =>
 		[.. TableModel.Cells.SelectMany(c => c)];
@@ -158,7 +159,6 @@ internal class TableShapeParameter(
 	public TableShapeParameter()
 		: this(null)
 	{
-		//SubscribeChildUndoRedoable(Cells);
 	}
 
 	public override IEnumerable<string> CreateMaskExoFilter(
