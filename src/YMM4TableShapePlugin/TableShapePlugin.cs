@@ -8,7 +8,7 @@ namespace YMM4TableShapePlugin;
 [PluginDetails(AuthorName = "InuInu", ContentId = "")]
 internal class TableShapePlugin : IShapePlugin
 {
-	public string Name => "テーブル図形";
+	public string Name => "表テーブル";
 	public PluginDetailsAttribute Details =>
 		GetType()
 			.GetCustomAttribute<PluginDetailsAttribute>()
