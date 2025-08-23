@@ -367,6 +367,7 @@ internal partial class TableShapeSource : IShapeSource2
 		ctx.Clear(clearColor: null);
 
 		// セル背景・テキスト描画
+		var sw = Stopwatch.StartNew();
 		RenderTableCells(
 			context with
 			{
@@ -375,6 +376,10 @@ internal partial class TableShapeSource : IShapeSource2
 			},
 			headerRowBackgroundBrush,
 			headerColumnBackgroundBrush
+		);
+		sw.Stop();
+		Debug.WriteLine(
+			"- RenderTableCells:" + sw.ElapsedMilliseconds
 		);
 
 		//一番外側のテーブルの外枠線(OuterBorder)+セルの内枠線
@@ -614,6 +619,20 @@ internal partial class TableShapeSource : IShapeSource2
 	const string DefaultFontName = "Yu Gothic UI";
 	const float DefaultFontSize = 34f;
 
+	/// <summary>
+	/// TextFormatキャッシュ用フィールド
+	/// </summary>
+	readonly Dictionary<
+		(
+			string fontFamily,
+			float fontSize,
+			FontStretch fontStretch,
+			FontStyle fontStyle,
+			FontWeight fontWeight
+		),
+		IDWriteTextFormat
+	> textFormatCache = new();
+
 	[System.Diagnostics.CodeAnalysis.SuppressMessage(
 		"Usage",
 		"SMA0040:Missing Using Statement",
@@ -662,21 +681,15 @@ internal partial class TableShapeSource : IShapeSource2
 
 				// セル内文字
 				var padding = 4f;
-
-				var leftText =
-					cellRect.Left
-					+ padding;
-				var topText =
-					cellRect.Top + padding;
+				var leftText = cellRect.Left + padding;
+				var topText = cellRect.Top + padding;
 				var widthText = MathF.Max(
 					0f,
-					cellRect.Width
-						- padding * 2
+					cellRect.Width - padding * 2
 				);
 				var heightText = MathF.Max(
 					0f,
-					cellRect.Height
-						- padding * 2
+					cellRect.Height - padding * 2
 				);
 				var textRect = new Rect(
 					leftText,
@@ -685,45 +698,51 @@ internal partial class TableShapeSource : IShapeSource2
 					heightText
 				);
 
-				var rightText = leftText + widthText;
-				var bottomText = topText + heightText;
-				var rightCell =
-					cellRect.Left + cellRect.Width;
-				var bottomCell =
-					cellRect.Top + cellRect.Height;
-
-				var leftGap = leftText - cellRect.Left;
-				var rightGap = rightCell - rightText;
-				var topGap = topText - cellRect.Top;
-				var bottomGap = bottomText - bottomCell;
-
 				var fSize = (float)
 					cell.FontSize.GetValue(
 						ctx.Frame,
 						ctx.Length,
 						ctx.Fps
 					);
+				var fontFamily = cell.Font is not ""
+					? cell.Font
+					: DefaultFontName;
+				var fontSize =
+					fSize > 0f ? fSize : DefaultFontSize;
+				var fontStretch = FontStretch.Normal;
+				var fontStyle = cell.IsFontItalic
+					? FontStyle.Italic
+					: FontStyle.Normal;
+				var fontWeight = cell.IsFontBold
+					? FontWeight.Bold
+					: FontWeight.Normal;
 
-				using var textFormat =
-					ctx.WriteFactory!.CreateTextFormat(
-						fontFamilyName: cell.Font is not ""
-							? cell.Font
-							: DefaultFontName,
-						fontSize: fSize > 0f
-							? fSize
-							: DefaultFontSize,
-						fontStretch: FontStretch.Normal,
-						fontStyle: cell.IsFontItalic switch
-						{
-							true => FontStyle.Italic,
-							false => FontStyle.Normal,
-						},
-						fontWeight: cell.IsFontBold switch
-						{
-							true => FontWeight.Bold,
-							false => FontWeight.Normal,
-						}
+				var key = (
+					fontFamily,
+					fontSize,
+					fontStretch,
+					fontStyle,
+					fontWeight
+				);
+
+				if (
+					!textFormatCache.TryGetValue(
+						key,
+						out var textFormat
+					)
+				)
+				{
+					textFormat =
+						ctx.WriteFactory!.CreateTextFormat(
+							fontFamilyName: fontFamily,
+							fontSize: fontSize,
+							fontStretch: fontStretch,
+							fontStyle: fontStyle,
+							fontWeight: fontWeight
 					);
+					textFormatCache[key] = textFormat;
+					disposer.Collect(textFormat);
+				}
 
 				textFormat.TextAlignment =
 					cell.TextAlign switch
@@ -759,13 +778,6 @@ internal partial class TableShapeSource : IShapeSource2
 							ParagraphAlignment.Far,
 						_ => ParagraphAlignment.Near,
 					};
-
-				Debug.WriteLine(
-					$"Cell[{r},{c}] Text=\"{cell.Text}\" Align={cell.TextAlign} "
-						+ $"Rect=({leftText},{topText},{widthText},{heightText}) CellRect=({cellRect.Left},{cellRect.Top},{cellRect.Width},{cellRect.Height}) "
-						+ $"Gaps: left={leftGap}, right={rightGap}, top={topGap}, bottom={bottomGap} "
-						+ $"TextAlignment={textFormat.TextAlignment} ParagraphAlignment={textFormat.ParagraphAlignment} FontSize={fSize}"
-				);
 
 				ctx.DeviceContext.DrawText(
 					cell.Text,
