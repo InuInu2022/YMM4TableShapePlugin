@@ -80,4 +80,14 @@ internal partial class TableShapeSource : IShapeSource2
 			+ (float)realOuterBorderWidth * row;
 		return new Rect(left, top, cellWidth, cellHeight);
 	}
+
+	static Rect CalcInnerRect(Rect cellRect, float padding)
+	{
+		return new Rect(
+			cellRect.Left + padding,
+			cellRect.Top + padding,
+			MathF.Max(0f, cellRect.Width - padding * 2),
+			MathF.Max(0f, cellRect.Height - padding * 2)
+		);
+	}
 }

@@ -33,7 +33,6 @@ internal partial class TableShapeSource : IShapeSource2
 		(
 			string fontFamily,
 			float fontSize,
-			FontStretch fontStretch,
 			FontStyle fontStyle,
 			FontWeight fontWeight
 		),

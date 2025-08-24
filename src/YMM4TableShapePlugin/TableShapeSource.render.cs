@@ -268,7 +268,6 @@ internal partial class TableShapeSource : IShapeSource2
 					: DefaultFontName;
 				var fontSize =
 					fSize > 0f ? fSize : DefaultFontSize;
-				var fontStretch = FontStretch.Normal;
 				var fontStyle = isFontItalic
 					? FontStyle.Italic
 					: FontStyle.Normal;
@@ -279,7 +278,6 @@ internal partial class TableShapeSource : IShapeSource2
 				var key = (
 					fontFamilyName,
 					fontSize,
-					fontStretch,
 					fontStyle,
 					fontWeight
 				);
@@ -295,7 +293,7 @@ internal partial class TableShapeSource : IShapeSource2
 						ctx.WriteFactory!.CreateTextFormat(
 							fontFamilyName: fontFamilyName,
 							fontSize: fontSize,
-							fontStretch: fontStretch,
+							fontStretch: FontStretch.Normal,
 							fontStyle: fontStyle,
 							fontWeight: fontWeight
 						);
@@ -339,21 +337,9 @@ internal partial class TableShapeSource : IShapeSource2
 					};
 
 				var padding = 4f;
-				var leftText = cellRect.Left + padding;
-				var topText = cellRect.Top + padding;
-				var widthText = MathF.Max(
-					0f,
-					cellRect.Width - padding * 2
-				);
-				var heightText = MathF.Max(
-					0f,
-					cellRect.Height - padding * 2
-				);
-				var textRect = new Rect(
-					leftText,
-					topText,
-					widthText,
-					heightText
+				var textRect = CalcInnerRect(
+					cellRect,
+					padding
 				);
 
 				if (
