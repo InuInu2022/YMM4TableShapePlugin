@@ -5,6 +5,8 @@ using System.Diagnostics;
 using System.Windows.Media;
 using YMM4TableShapePlugin.Enums;
 using YMM4TableShapePlugin.Models;
+using YMM4TableShapePlugin.View;
+
 using YukkuriMovieMaker.Commons;
 using YukkuriMovieMaker.Controls;
 using YukkuriMovieMaker.Exo;
@@ -259,7 +261,10 @@ internal class TableShapeParameter(
 
 	#endregion header
 
-	[Display(AutoGenerateField = true)] //機能しない…
+	[Display(GroupName = "", Name = "")]
+	[TableShapeEditor(
+		PropertyEditorSize = PropertyEditorSize.FullWidth
+	)]
 	public TableModel TableModel { get; set; } = new(1, 1);
 
 	//TODO: 独自UIに置き換える

@@ -226,8 +226,15 @@ public sealed class TableCell
 	bool isFontItalic;
 
 
-
+	/// <summary>
+	/// 行番号
+	/// 注意：1始まり
+	/// </summary>
 	public required int Row { get; init; }
+	/// <summary>
+	/// 列番号
+	/// 注意：1始まり
+	/// </summary>
 	public required int Col { get; init; }
 	public int RowSpan
 	{

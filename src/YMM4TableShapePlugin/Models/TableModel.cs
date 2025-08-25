@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -39,27 +40,19 @@ public sealed class TableModel
 
 
 	[Display(AutoGenerateField = true)]
-	public ImmutableList<ImmutableList<TableCell>> Cells
+	public ObservableCollection<
+		ObservableCollection<TableCell>
+	> Cells
 	{
 		get => _cells;
 		set
 		{
-			BeginEdit();
 			Set(ref _cells, value);
-			EndEditAsync().AsTask().Wait();
 		}
 	}
-	ImmutableList<ImmutableList<TableCell>> _cells =
-	[
-		[
-			new TableCell
-			{
-				Row = 1,
-				Col = 1,
-				Text = "text",
-			},
-		],
-	];
+	ObservableCollection<
+		ObservableCollection<TableCell>
+	> _cells = []; // ← デフォルト行を削除し空リストにする
 
 	public int Rows => Cells.Count;
 	public int Cols => Cells.FirstOrDefault()?.Count ?? 0;
@@ -105,8 +98,11 @@ public sealed class TableModel
 			return;
 		}
 
-		var cellList = new List<ImmutableList<TableCell>>(
-			rows
+		var cellList =
+			new ObservableCollection<
+				ObservableCollection<TableCell>
+			>(
+			//rows
 		);
 		for (int r = 0; r < rows; r++)
 		{
