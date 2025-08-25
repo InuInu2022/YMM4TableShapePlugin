@@ -267,8 +267,25 @@ internal class TableShapeParameter(
 	)]
 	public TableModel TableModel { get; set; } = new(1, 1);
 
-	//TODO: 独自UIに置き換える
-	[Display(AutoGenerateField = true)]
+	[Display(
+		GroupName = "高度な設定",
+		Name = "セルリストの表示",
+		Description = ""
+	)]
+	[ToggleSlider]
+	public bool IsShowCellList{
+		get => _isShowCellList;
+		set { Set(ref _isShowCellList, value); }
+	}
+	bool _isShowCellList;
+
+	[Display(GroupName = "高度な設定",
+		Name = "セルリスト",
+		AutoGenerateField = true)]
+	[ShowPropertyEditorWhen(
+		nameof(IsShowCellList),
+		false
+	)]
 	public ImmutableList<Models.TableCell> Cells =>
 		[.. TableModel.Cells.SelectMany(c => c)];
 

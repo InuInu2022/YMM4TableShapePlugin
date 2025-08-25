@@ -74,6 +74,7 @@
                       MinWidth="100"
                       Margin="0"
                       Padding="0"
+                      AcceptsReturn="True"
                       HorizontalAlignment="Stretch"
                       epoxy:Fountain.Well="{Binding DataContext.TextEditorWell, RelativeSource={RelativeSource AncestorType=UserControl}}"
                       Text="{Binding Text, Mode=TwoWay}"
