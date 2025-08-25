@@ -23,20 +23,28 @@ public class TableShapeEditorViewModel : IDisposable
 		Well.Factory.Create<TableShapeEditor>();
 	public Well<Thumb> BottomThumbWell { get; } =
 		Well.Factory.Create<Thumb>();
+
+	public Well<Grid> MainGridWell {get;} =
+		Well.Factory.Create<Grid>();
+
 	public ObservableCollection<
 		ObservableCollection<TableCell>
-	> Cells { get; private set; } = []; // 初期値を空コレクションに修正
+	> Cells
+	{ get; private set; } = []; // 初期値を空コレクションに修正
 	public ObservableCollection<TableCell>? SelectedRow { get; set; }
 	public TableCell? SelectedCell { get; set; }
 	public Well<TextEditor> TextEditorWell { get; set; } =
 		Well.Factory.Create<TextEditor>();
 	public DataTable CellTable { get; private set; } =
 		new();
+
+	public double EditorHeight { get; private set; } = 100;
 	public event EventHandler? BeginEdit;
 	public event EventHandler? EndEdit;
 
 	readonly ItemProperty[] _properties;
 	readonly INotifyPropertyChanged? _item;
+	const double ThumbHeight = 5;
 	private bool _disposedValue;
 	private double dragStartHeight;
 	private double dragDeltaSum;
@@ -72,6 +80,19 @@ public class TableShapeEditorViewModel : IDisposable
 			}
 		);
 
+		MainGridWell.Add<SizeChangedEventArgs>(
+			"SizeChanged",
+			e =>
+			{
+				if (e.Source is Grid grid
+					&& grid.ActualHeight > 0)
+				{
+					EditorHeight = grid.ActualHeight + ThumbHeight;
+				}
+				return default;
+			}
+		);
+
 		TextEditorWell.Add<MouseButtonEventArgs>(
 			"PreviewMouseDown",
 			(e) =>
@@ -92,13 +113,12 @@ public class TableShapeEditorViewModel : IDisposable
 			"DragStarted",
 			e =>
 			{
-				if (
-					e.Source is Thumb thumb
-					&& thumb.Parent is Grid grid
-				)
+				if (TryGetGrid(e, out var grid))
 				{
-					if(dragStartHeight == 0){
-						dragDefaultHeight = grid.ActualHeight;
+					if (dragStartHeight == 0)
+					{
+						dragDefaultHeight =
+							grid.ActualHeight;
 					}
 					dragStartHeight = grid.ActualHeight;
 					dragDeltaSum = 0;
@@ -111,10 +131,7 @@ public class TableShapeEditorViewModel : IDisposable
 			"DragDelta",
 			e =>
 			{
-				if (
-					e.Source is Thumb thumb
-					&& thumb.Parent is Grid grid
-				)
+				if (TryGetGrid(e, out var grid))
 				{
 					dragDeltaSum += e.VerticalChange;
 					grid.Height = Math.Max(
@@ -126,6 +143,27 @@ public class TableShapeEditorViewModel : IDisposable
 			}
 		);
 
+		static bool TryGetGrid<T>(
+			T e,
+			[MaybeNullWhen(false)] out Grid grid
+		)
+			where T : RoutedEventArgs
+		{
+			if (
+				e.Source is Thumb thumb
+				&& thumb.Parent is DockPanel dock
+				&& dock
+					.Children.OfType<Grid>()
+					.FirstOrDefault()
+					is Grid pGrid
+			)
+			{
+				grid = pGrid;
+				return true;
+			}
+			grid = null;
+			return false;
+		}
 	}
 
 	void Item_PropertyChanged(
@@ -145,8 +183,7 @@ public class TableShapeEditorViewModel : IDisposable
 		}
 	}
 
-	public ObservableCollection<string> ColumnHeaders { get; } =
-		[];
+
 
 	void UpdateCells()
 	{
