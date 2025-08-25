@@ -6,6 +6,7 @@ using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using Epoxy;
 using YMM4TableShapePlugin.Models;
@@ -20,6 +21,8 @@ public class TableShapeEditorViewModel : IDisposable
 {
 	public Well<TableShapeEditor> MainControlWell { get; } =
 		Well.Factory.Create<TableShapeEditor>();
+	public Well<Thumb> BottomThumbWell { get; } =
+		Well.Factory.Create<Thumb>();
 	public ObservableCollection<
 		ObservableCollection<TableCell>
 	> Cells { get; private set; } = []; // 初期値を空コレクションに修正
@@ -35,6 +38,7 @@ public class TableShapeEditorViewModel : IDisposable
 	readonly ItemProperty[] _properties;
 	readonly INotifyPropertyChanged? _item;
 	private bool _disposedValue;
+	private double dragStartHeight;
 
 	public TableShapeEditorViewModel(
 		ItemProperty[] properties
@@ -81,6 +85,40 @@ public class TableShapeEditorViewModel : IDisposable
 				return default;
 			}
 		);
+
+		BottomThumbWell.Add<DragStartedEventArgs>(
+			"DragStarted",
+			e =>
+			{
+				if (
+					e.Source is Thumb thumb
+					&& thumb.Parent is Grid grid
+				)
+				{
+					dragStartHeight = grid.ActualHeight;
+				}
+				return default;
+			}
+		);
+
+		BottomThumbWell.Add<DragDeltaEventArgs>(
+			"DragDelta",
+			e =>
+			{
+				if (
+					e.Source is Thumb thumb
+					&& thumb.Parent is Grid grid
+				)
+				{
+					grid.Height = Math.Max(
+						dragStartHeight + e.VerticalChange,
+						50
+					);
+				}
+				return default;
+			}
+		);
+
 	}
 
 	void Item_PropertyChanged(
