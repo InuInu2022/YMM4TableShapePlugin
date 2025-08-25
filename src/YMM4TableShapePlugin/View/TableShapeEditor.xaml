@@ -26,13 +26,13 @@
     <Grid
       x:Name="mainGrid"
       epoxy:Fountain.Well="{Binding MainGridWell}"
-      VerticalAlignment="Stretch">
+      VerticalAlignment="Top"
+      >
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto" />
         <RowDefinition Height="3" />
         <!--  GridSplitter  -->
         <RowDefinition Height="Auto" />
-        <RowDefinition Height="*" />
       </Grid.RowDefinitions>
 
       <ScrollViewer
