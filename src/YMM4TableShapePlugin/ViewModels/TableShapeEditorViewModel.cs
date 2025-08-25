@@ -39,6 +39,8 @@ public class TableShapeEditorViewModel : IDisposable
 	readonly INotifyPropertyChanged? _item;
 	private bool _disposedValue;
 	private double dragStartHeight;
+	private double dragDeltaSum;
+	private double dragDefaultHeight;
 
 	public TableShapeEditorViewModel(
 		ItemProperty[] properties
@@ -95,7 +97,11 @@ public class TableShapeEditorViewModel : IDisposable
 					&& thumb.Parent is Grid grid
 				)
 				{
+					if(dragStartHeight == 0){
+						dragDefaultHeight = grid.ActualHeight;
+					}
 					dragStartHeight = grid.ActualHeight;
+					dragDeltaSum = 0;
 				}
 				return default;
 			}
@@ -110,9 +116,10 @@ public class TableShapeEditorViewModel : IDisposable
 					&& thumb.Parent is Grid grid
 				)
 				{
+					dragDeltaSum += e.VerticalChange;
 					grid.Height = Math.Max(
-						dragStartHeight + e.VerticalChange,
-						50
+						dragStartHeight + dragDeltaSum,
+						dragDefaultHeight
 					);
 				}
 				return default;
