@@ -22,8 +22,8 @@ namespace YMM4TableShapePlugin.Models;
 /// <see cref="TableCell"/> は、結合セルグループの親（ルート）または子として扱われる場合があります。
 /// </remarks>
 /// <property name="Text">セルのテキスト内容。</property>
-/// <property name="Row">セルのゼロ始まりの行インデックス。</property>
-/// <property name="Col">セルのゼロ始まりの列インデックス。</property>
+/// <property name="Row">セルの1始まりの行インデックス。</property>
+/// <property name="Col">セルの1始まりの列インデックス。</property>
 /// <property name="RowSpan">このセルがまたぐ行数。デフォルトは1。</property>
 /// <property name="ColSpan">このセルがまたぐ列数。デフォルトは1。</property>
 /// <property name="ParentCell">

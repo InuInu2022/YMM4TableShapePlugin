@@ -70,15 +70,9 @@ internal class TableShapeEditorAttribute
 			return;
 		}
 
-		if (
-			editor.DataContext
-			is not TableShapeEditorViewModel vm
-		)
-		{
-			return;
-		}
-
-		vm.Dispose();
+		var vm =
+			editor.DataContext as TableShapeEditorViewModel;
+		vm?.Dispose();
 		editor.DataContext = null;
 
 		/*

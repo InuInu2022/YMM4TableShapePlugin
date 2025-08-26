@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Runtime.InteropServices;
@@ -31,6 +32,10 @@ public class TableShapeEditorViewModel : IDisposable
 		ObservableCollection<TableCell>
 	> Cells
 	{ get; private set; } = []; // 初期値を空コレクションに修正
+	public ObservableCollection<
+		ObservableCollection<TableCell>
+	> FilteredCells { get; private set; } = [];
+
 	public ObservableCollection<TableCell>? SelectedRow { get; set; }
 	public TableCell? SelectedCell { get; set; }
 	public Well<TextEditor> TextEditorWell { get; set; } =
@@ -39,11 +44,14 @@ public class TableShapeEditorViewModel : IDisposable
 		new();
 
 	public double EditorHeight { get; private set; } = 100;
+
+	public IEditorInfo? EditorInfo { get; set; }
+
 	public event EventHandler? BeginEdit;
 	public event EventHandler? EndEdit;
 
 	readonly ItemProperty[] _properties;
-	readonly INotifyPropertyChanged? _item;
+	readonly TableShapeParameter? _parameter;
 	const double ThumbHeight = 5;
 	private bool _disposedValue;
 	private double dragStartHeight;
@@ -56,16 +64,48 @@ public class TableShapeEditorViewModel : IDisposable
 	{
 		this._properties = properties;
 
+		//var shapeItem = properties[0].Item;
+
 		if (
 			properties[0].PropertyOwner
-			is INotifyPropertyChanged item
+			is TableShapeParameter parameter
 		)
 		{
-			_item = item;
-			_item.PropertyChanged += Item_PropertyChanged;
+			_parameter = parameter;
+			_parameter.RowCount.PropertyChanged += Item_PropertyChanged;
+			_parameter.ColumnCount.PropertyChanged +=
+				Item_PropertyChanged;
+
+			Debug.WriteLine("_parameter.GetHashCode():" + _parameter.GetHashCode());
+
+			foreach (var v in _parameter.RowCount.Values.OfType<INotifyPropertyChanged>())
+			{
+				v.PropertyChanged +=
+					OnRowOrColumnValuePropertyChanged;
+			}
+			foreach (
+				var v in _parameter.ColumnCount.Values.OfType<INotifyPropertyChanged>()
+			)
+			{
+				v.PropertyChanged +=
+					OnRowOrColumnValuePropertyChanged;
+			}
 		}
 
 		InitializeEventHandlers();
+	}
+
+	void OnRowOrColumnValuePropertyChanged(
+		object? sender,
+		PropertyChangedEventArgs e
+	)
+	{
+		Debug.WriteLine($"OnAnimationValuePropertyChanged: {e.PropertyName}");
+		if (string.Equals(e.PropertyName, nameof(AnimationValue.Value), StringComparison.Ordinal))
+		{
+			// ここで「数値が編集された」ことを検知できる
+			UpdateCells();
+		}
 	}
 
 	void InitializeEventHandlers()
@@ -171,6 +211,12 @@ public class TableShapeEditorViewModel : IDisposable
 		PropertyChangedEventArgs e
 	)
 	{
+		//呼ばれない？
+		//Animationプロパティは差し替え時にしかよばれない
+
+		Debug.WriteLine(
+			$"Item_PropertyChanged: {e.PropertyName}"
+		);
 		if (
 			string.Equals(
 				e.PropertyName,
@@ -180,10 +226,23 @@ public class TableShapeEditorViewModel : IDisposable
 		)
 		{
 			//UpdateCells();
+			Debug.WriteLine(
+				$"\tUpdateCells();: {e.PropertyName}"
+			);
+		}
+
+		// RowCount/ColumnCount変更時にフィルタ更新
+		if (
+			e.PropertyName == nameof(TableShapeParameter.RowCount)
+			|| e.PropertyName == nameof(TableShapeParameter.ColumnCount)
+		)
+		{
+			UpdateCells();
+			Debug.WriteLine(
+				$"\tUpdateFilteredCells(): {e.PropertyName}"
+			);
 		}
 	}
-
-
 
 	void UpdateCells()
 	{
@@ -208,30 +267,99 @@ public class TableShapeEditorViewModel : IDisposable
 		}
 
 		BeginEdit?.Invoke(this, EventArgs.Empty);
-		// 空行を除外してデータ自体も更新
-		var filtered = values
-			.Where(row => row.Count > 0)
-			.ToList();
-		if (filtered.Count != values.Count)
+
+		// Row/Colを超えたCellデータは消す必要はないが、
+		// 存在しなければ追加する必要がある
+
+		(int maxRow, int maxCol) = GetMaxRowCol(param);
+
+		if (Cells.Count < maxRow)
 		{
-			// データモデルからも空行を除去
-			param.TableModel.Cells.Clear();
-			foreach (
-				ref var row in CollectionsMarshal.AsSpan(
-					filtered
-				)
-			)
+			// RowCountが変更された場合、行数を更新する
+			for (int i = 0; i < maxRow; i++)
 			{
-				param.TableModel.Cells.Add(row);
+				if (i >= Cells.Count)
+				{
+					Cells.Add([]);	//とりあえず空行追加
+				}
 			}
 		}
-		if (!filtered.SequenceEqual(Cells))
+
+		// ColumnCountが変更された場合、列数を更新する
+		for (var j = 0; j < Cells.Count; j++)
 		{
-			Cells = new ObservableCollection<
-				ObservableCollection<TableCell>
-			>(filtered);
+			var row = Cells[j];
+			for (int i = 0; i < maxCol; i++)
+			{
+				if (i >= row.Count)
+				{
+					//足りない列分のセルを追加
+					row.Add(new TableCell()
+					{
+						Row = j + 1,
+						Col = i + 1,
+						Text = string.Empty,
+					});
+				}
+			}
 		}
+
+		//Cellsの更新
+		if (!Cells.SequenceEqual(param.TableModel.Cells))
+		{
+			Cells.Clear();
+
+			foreach (var row in param.TableModel.Cells)
+			{
+				Cells.Add(
+					new ObservableCollection<TableCell>(row)
+				);
+			}
+		}
+
+		UpdateFilteredCells();
 		EndEdit?.Invoke(this, EventArgs.Empty);
+	}
+
+	void UpdateFilteredCells()
+	{
+		if (
+			_properties[0].PropertyOwner
+			is not TableShapeParameter param
+		)
+		{
+			return;
+		}
+
+		(int maxRow, int maxCol) = GetMaxRowCol(param);
+
+		FilteredCells.Clear();
+		for (int i = 0; i < maxRow; i++)
+		{
+			var row = Cells[i];
+			var filteredRow =
+				new ObservableCollection<TableCell>(
+					row.Take(maxCol)
+				);
+			if (filteredRow.Count > 0)
+				FilteredCells.Add(filteredRow);
+			Debug.WriteLine("filtered:" + FilteredCells.Count);
+		}
+	}
+
+	(int maxRow, int maxCol) GetMaxRowCol(
+		TableShapeParameter param
+	)
+	{
+		var frame = EditorInfo?.ItemPosition?.Frame ?? 0;
+		var total = EditorInfo?.ItemDuration?.Frame ?? 0;
+		var fps = EditorInfo?.VideoInfo?.FPS ?? 60;
+
+		var maxRow = (int)
+			param.RowCount.GetValue(frame, total, fps);
+		var maxCol = (int)
+			param.ColumnCount.GetValue(frame, total, fps);
+		return (maxRow, maxCol);
 	}
 
 	[PropertyChanged(nameof(SelectedCell))]
@@ -254,9 +382,11 @@ public class TableShapeEditorViewModel : IDisposable
 		{
 			if (disposing)
 			{
-				if (_item is not null)
+				if (_parameter is not null)
 				{
-					_item.PropertyChanged -=
+					_parameter.ColumnCount.PropertyChanged -=
+						Item_PropertyChanged;
+					_parameter.RowCount.PropertyChanged -=
 						Item_PropertyChanged;
 				}
 

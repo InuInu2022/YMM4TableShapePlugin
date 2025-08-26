@@ -3,9 +3,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-
 using Epoxy;
-
 using YukkuriMovieMaker.Commons;
 
 namespace YMM4TableShapePlugin.Models;
@@ -21,10 +19,10 @@ public sealed class TableModel
 		set => Set(ref _rowBoundaries, value);
 	}
 	ImmutableList<Animation> _rowBoundaries =
-		[
-			new(0f, BoundariesMin, BoundariesMax),
-			new(500f, BoundariesMin, BoundariesMax),
-		];
+	[
+		new(0f, BoundariesMin, BoundariesMax),
+		new(500f, BoundariesMin, BoundariesMax),
+	];
 
 	[Display(AutoGenerateField = true)]
 	public ImmutableList<Animation> ColumnBoundaries
@@ -33,11 +31,10 @@ public sealed class TableModel
 		set => Set(ref _columnBoundaries, value);
 	}
 	ImmutableList<Animation> _columnBoundaries =
-		[
-			new(0f, BoundariesMin, BoundariesMax),
-			new(300f, BoundariesMin, BoundariesMax),
-		];
-
+	[
+		new(0f, BoundariesMin, BoundariesMax),
+		new(300f, BoundariesMin, BoundariesMax),
+	];
 
 	[Display(AutoGenerateField = true)]
 	public ObservableCollection<
@@ -45,14 +42,11 @@ public sealed class TableModel
 	> Cells
 	{
 		get => _cells;
-		set
-		{
-			Set(ref _cells, value);
-		}
+		set { Set(ref _cells, value); }
 	}
 	ObservableCollection<
 		ObservableCollection<TableCell>
-	> _cells = []; // ← デフォルト行を削除し空リストにする
+	> _cells = [];
 
 	public int Rows => Cells.Count;
 	public int Cols => Cells.FirstOrDefault()?.Count ?? 0;
@@ -98,48 +92,35 @@ public sealed class TableModel
 			return;
 		}
 
-		var cellList =
-			new ObservableCollection<
-				ObservableCollection<TableCell>
-			>(
-			//rows
-		);
-		for (int r = 0; r < rows; r++)
+		UIThread.InvokeAsync(() =>
 		{
-			var rowList = new List<TableCell>(cols);
-			for (int c = 0; c < cols; c++)
+			// 行数調整
+			while (Cells.Count < rows)
 			{
-				TableCell cell =
-					(r < Cells.Count && c < Cells[r].Count)
-						? Cells[r][c]
-						: new TableCell
-						{
-							Row = r,
-							Col = c,
-						};
-				rowList.Add(cell);
+				var newRow =
+					new ObservableCollection<TableCell>();
+				Cells.Add(newRow);
 			}
-			cellList.Add([.. rowList]);
-		}
-		BeginEdit();
 
-		if (IsCurrentThreadUI())
-		{
-			Cells = [.. cellList];
-		}
-		else
-		{
-			UIThread
-				.InvokeAsync(() =>
+			// 列数調整
+			for (int r = 0; r < rows; r++)
+			{
+				var rowList = Cells[r];
+				while (rowList.Count < cols)
 				{
-					Cells = [.. cellList];
-					return default;
-				})
-				.AsTask()
-				.Wait();
-		}
+					rowList.Add(
+						new TableCell
+						{
+							Row = r + 1,
+							Col = rowList.Count + 1,
+						}
+					);
+				}
+			}
 
-		ResetBoundaries(rows, cols);
+			ResetBoundaries(rows, cols);
+			return default;
+		}).AsTask().Wait();
 		EndEditAsync().AsTask().Wait();
 	}
 

@@ -6,7 +6,6 @@ using System.Windows.Media;
 using YMM4TableShapePlugin.Enums;
 using YMM4TableShapePlugin.Models;
 using YMM4TableShapePlugin.View;
-
 using YukkuriMovieMaker.Commons;
 using YukkuriMovieMaker.Controls;
 using YukkuriMovieMaker.Exo;
@@ -17,9 +16,7 @@ using YukkuriMovieMaker.Project;
 
 namespace YMM4TableShapePlugin;
 
-internal class TableShapeParameter(
-	SharedDataStore? sharedData
-) : ShapeParameterBase(sharedData)
+internal class TableShapeParameter : ShapeParameterBase
 {
 	[Display(Name = "幅")]
 	[AnimationSlider("F0", "px", 0, 1000)]
@@ -273,21 +270,41 @@ internal class TableShapeParameter(
 		Description = ""
 	)]
 	[ToggleSlider]
-	public bool IsShowCellList{
+	public bool IsShowCellList
+	{
 		get => _isShowCellList;
 		set { Set(ref _isShowCellList, value); }
 	}
 	bool _isShowCellList;
 
-	[Display(GroupName = "高度な設定",
+	[Display(
+		GroupName = "高度な設定",
 		Name = "セルリスト",
-		AutoGenerateField = true)]
-	[ShowPropertyEditorWhen(
-		nameof(IsShowCellList),
-		false
+		AutoGenerateField = true
 	)]
+	[ShowPropertyEditorWhen(nameof(IsShowCellList), false)]
 	public ImmutableList<Models.TableCell> Cells =>
 		[.. TableModel.Cells.SelectMany(c => c)];
+
+	public TableShapeParameter(SharedDataStore? sharedData)
+		: base(sharedData)
+	{
+		RowCount.PropertyChanged += (_, e) =>
+		{
+			Debug.WriteLine(
+				"this.GetHashCode():"
+					+ this.GetHashCode()
+			);
+			OnPropertyChanged(nameof(RowCount));
+		};
+		ColumnCount.PropertyChanged += (_, e) =>
+		{
+			Debug.WriteLine(
+				"this.GetHashCode():" + this.GetHashCode()
+			);
+			OnPropertyChanged(nameof(ColumnCount));
+		};
+	}
 
 	public TableShapeParameter()
 		: this(null) { }

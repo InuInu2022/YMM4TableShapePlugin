@@ -46,7 +46,7 @@
           Padding="0"
           HorizontalContentAlignment="Stretch"
           VerticalContentAlignment="Stretch"
-          ItemsSource="{Binding Cells}"
+          ItemsSource="{Binding FilteredCells}"
           VirtualizingStackPanel.IsVirtualizing="True"
           VirtualizingStackPanel.VirtualizationMode="Recycling"
           >

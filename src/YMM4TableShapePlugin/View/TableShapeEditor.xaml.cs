@@ -40,6 +40,10 @@ public partial class TableShapeEditor
 	public void SetEditorInfo(IEditorInfo info)
 	{
 		EditorInfo = info;
+		if (info is not null && DataContext is TableShapeEditorViewModel vm)
+		{
+			vm.EditorInfo = info;
+		}
 	}
 
 	void InnerPropertyEditor_DataContextChanged(
@@ -58,6 +62,7 @@ public partial class TableShapeEditor
 			newVm.BeginEdit +=
 				InnerPropertiesEditor_BeginEdit;
 			newVm.EndEdit += InnerPropertiesEditor_EndEdit;
+			newVm.EditorInfo = EditorInfo;
 		}
 	}
 
