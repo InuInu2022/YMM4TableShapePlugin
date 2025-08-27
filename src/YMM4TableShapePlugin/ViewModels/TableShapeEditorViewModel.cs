@@ -311,16 +311,27 @@ public class TableShapeEditorViewModel : IDisposable
 		// 存在しなければ追加する必要がある
 
 		(int maxRow, int maxCol) = GetMaxRowCol(param);
+		Debug.WriteLine($"UpdateCells(): r:{maxRow}, c:{maxCol}");
 
 		if (Cells.Count < maxRow)
 		{
 			// RowCountが変更された場合、行数を更新する
-			for (int i = 0; i < maxRow; i++)
+			for (int i = Cells.Count; i < maxRow; i++)
 			{
-				if (i >= Cells.Count)
+				var newRow =
+					new ObservableCollection<TableCell>();
+				for (int col = 0; col < maxCol; col++)
 				{
-					Cells.Add([]); //とりあえず空行追加
+					newRow.Add(
+						new TableCell
+						{
+							Row = i + 1,
+							Col = col + 1,
+							Text = string.Empty,
+						}
+					);
 				}
+				Cells.Add(newRow);
 			}
 		}
 
@@ -328,7 +339,7 @@ public class TableShapeEditorViewModel : IDisposable
 		for (var j = 0; j < Cells.Count; j++)
 		{
 			var row = Cells[j];
-			for (int i = 0; i < maxCol; i++)
+			for (int i = row.Count; i < maxCol; i++)
 			{
 				if (i >= row.Count)
 				{
@@ -343,6 +354,7 @@ public class TableShapeEditorViewModel : IDisposable
 					);
 				}
 			}
+			Debug.WriteLine($"new row[{j}]: {row.Count}");
 		}
 
 		//Cellsの更新
@@ -352,9 +364,25 @@ public class TableShapeEditorViewModel : IDisposable
 
 			foreach (var row in param.TableModel.Cells)
 			{
-				Cells.Add(
-					new ObservableCollection<TableCell>(row)
-				);
+				var newRow =
+					new ObservableCollection<TableCell>(
+						row
+					);
+
+				// 列数が足りない場合は不足分を追加
+				for (int i = newRow.Count; i < maxCol; i++)
+				{
+					newRow.Add(
+						new TableCell
+						{
+							Row = Cells.Count + 1,
+							Col = i + 1,
+							Text = string.Empty,
+						}
+					);
+				}
+
+				Cells.Add(newRow);
 			}
 		}
 
