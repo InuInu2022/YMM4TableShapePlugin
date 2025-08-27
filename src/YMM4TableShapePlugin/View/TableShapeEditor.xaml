@@ -49,6 +49,7 @@
           ItemsSource="{Binding FilteredCells}"
           VirtualizingStackPanel.IsVirtualizing="True"
           VirtualizingStackPanel.VirtualizationMode="Recycling"
+          epoxy:Anchor.Pile="{Binding TablePile}"
           >
           <ItemsControl.ItemTemplate>
             <DataTemplate>

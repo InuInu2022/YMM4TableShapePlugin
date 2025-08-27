@@ -5,6 +5,9 @@ using System.Numerics;
 using System.Reflection.Metadata;
 using System.Windows.Documents;
 using System.Windows.Media;
+
+using Epoxy;
+
 using Vortice.Direct2D1;
 using Vortice.DirectWrite;
 using Vortice.Mathematics;
@@ -215,8 +218,12 @@ internal partial class TableShapeSource : IShapeSource2
 				if (
 					r >= ctx.Model.Rows
 					|| c >= ctx.Model.Cols
+					|| r >= ctx.Model.Cells.Count
+					|| c >= ctx.Model.Cells[r].Count
 				)
+				{
 					continue;
+				}
 
 				var cell = ctx.Model.Cells[r][c];
 

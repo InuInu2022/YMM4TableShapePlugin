@@ -4,7 +4,9 @@ using System.Data;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -25,13 +27,15 @@ public class TableShapeEditorViewModel : IDisposable
 	public Well<Thumb> BottomThumbWell { get; } =
 		Well.Factory.Create<Thumb>();
 
-	public Well<Grid> MainGridWell {get;} =
+	public Well<Grid> MainGridWell { get; } =
 		Well.Factory.Create<Grid>();
+
+	public Pile<ItemsControl> TablePile { get; } =
+		Pile.Factory.Create<ItemsControl>();
 
 	public ObservableCollection<
 		ObservableCollection<TableCell>
-	> Cells
-	{ get; private set; } = []; // 初期値を空コレクションに修正
+	> Cells { get; private set; } = []; // 初期値を空コレクションに修正
 	public ObservableCollection<
 		ObservableCollection<TableCell>
 	> FilteredCells { get; private set; } = [];
@@ -40,8 +44,6 @@ public class TableShapeEditorViewModel : IDisposable
 	public TableCell? SelectedCell { get; set; }
 	public Well<TextEditor> TextEditorWell { get; set; } =
 		Well.Factory.Create<TextEditor>();
-	public DataTable CellTable { get; private set; } =
-		new();
 
 	public double EditorHeight { get; private set; } = 100;
 
@@ -64,21 +66,25 @@ public class TableShapeEditorViewModel : IDisposable
 	{
 		this._properties = properties;
 
-		//var shapeItem = properties[0].Item;
-
 		if (
 			properties[0].PropertyOwner
 			is TableShapeParameter parameter
 		)
 		{
 			_parameter = parameter;
-			_parameter.RowCount.PropertyChanged += Item_PropertyChanged;
+			_parameter.RowCount.PropertyChanged +=
+				Item_PropertyChanged;
 			_parameter.ColumnCount.PropertyChanged +=
 				Item_PropertyChanged;
 
-			Debug.WriteLine("_parameter.GetHashCode():" + _parameter.GetHashCode());
+			Debug.WriteLine(
+				"_parameter.GetHashCode():"
+					+ _parameter.GetHashCode()
+			);
 
-			foreach (var v in _parameter.RowCount.Values.OfType<INotifyPropertyChanged>())
+			foreach (
+				var v in _parameter.RowCount.Values.OfType<INotifyPropertyChanged>()
+			)
 			{
 				v.PropertyChanged +=
 					OnRowOrColumnValuePropertyChanged;
@@ -95,28 +101,53 @@ public class TableShapeEditorViewModel : IDisposable
 		InitializeEventHandlers();
 	}
 
-	void OnRowOrColumnValuePropertyChanged(
+	[SuppressMessage("Usage", "VSTHRD100")]
+	async void OnRowOrColumnValuePropertyChanged(
 		object? sender,
 		PropertyChangedEventArgs e
 	)
 	{
-		Debug.WriteLine($"OnAnimationValuePropertyChanged: {e.PropertyName}");
-		if (string.Equals(e.PropertyName, nameof(AnimationValue.Value), StringComparison.Ordinal))
+		// ここで「数値が編集された」ことを検知できる
+		try
 		{
-			// ここで「数値が編集された」ことを検知できる
-			UpdateCells();
+			if (IsAnimationValue(e))
+			{
+				await UpdateCellsAsync(e)
+					.ConfigureAwait(true);
+			}
+		}
+		catch (Exception ex)
+		{
+			Debug.WriteLine(
+				$"Error occurred while updating cells: {ex.Message}"
+			);
+			Log.Default.Write(
+				$"[{nameof(TableShapePlugin)}] {ex.Message}",
+				ex
+			);
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		static bool IsAnimationValue(
+			PropertyChangedEventArgs e
+		)
+		{
+			return string.Equals(
+				e.PropertyName,
+				nameof(AnimationValue.Value),
+				StringComparison.Ordinal
+			);
 		}
 	}
 
 	void InitializeEventHandlers()
 	{
-		MainControlWell.Add(
+		MainControlWell.Add<RoutedEventArgs>(
 			"Loaded",
-			() =>
+			async (e) =>
 			{
-				UpdateCells();
-
-				return default;
+				await UpdateCellsAsync(e)
+					.ConfigureAwait(true);
 			}
 		);
 
@@ -124,15 +155,25 @@ public class TableShapeEditorViewModel : IDisposable
 			"SizeChanged",
 			e =>
 			{
-				if (e.Source is Grid grid
-					&& grid.ActualHeight > 0)
+				if (
+					e.Source is Grid grid
+					&& grid.ActualHeight > 0
+				)
 				{
-					EditorHeight = grid.ActualHeight + ThumbHeight;
+					EditorHeight =
+						grid.ActualHeight + ThumbHeight;
 				}
 				return default;
 			}
 		);
 
+		InitializeTextEditorEvents();
+
+		InitializeThumbDragEvents();
+	}
+
+	void InitializeTextEditorEvents()
+	{
 		TextEditorWell.Add<MouseButtonEventArgs>(
 			"PreviewMouseDown",
 			(e) =>
@@ -149,6 +190,32 @@ public class TableShapeEditorViewModel : IDisposable
 			}
 		);
 
+		TextEditorWell.Add<EventArgs>(
+			"BeginEdit",
+			(e) =>
+			{
+				//親コントロールのBeginEdit・EndEditを呼ぶ必要がある
+				BeginEdit?.Invoke(this, e);
+				return default;
+			}
+		);
+
+		TextEditorWell.Add<EventArgs>(
+			"EndEdit",
+			(e) =>
+			{
+				//親コントロールのBeginEdit・EndEditを呼ぶ必要がある
+				EndEdit?.Invoke(this, e);
+				return default;
+			}
+		);
+	}
+
+	/// <summary>
+	/// Thumbのドラッグ操作のイベントハンドラを設定します。
+	/// </summary>
+	void InitializeThumbDragEvents()
+	{
 		BottomThumbWell.Add<DragStartedEventArgs>(
 			"DragStarted",
 			e =>
@@ -213,38 +280,10 @@ public class TableShapeEditorViewModel : IDisposable
 	{
 		//呼ばれない？
 		//Animationプロパティは差し替え時にしかよばれない
-
-		Debug.WriteLine(
-			$"Item_PropertyChanged: {e.PropertyName}"
-		);
-		if (
-			string.Equals(
-				e.PropertyName,
-				_properties[0].PropertyInfo.Name,
-				StringComparison.Ordinal
-			)
-		)
-		{
-			//UpdateCells();
-			Debug.WriteLine(
-				$"\tUpdateCells();: {e.PropertyName}"
-			);
-		}
-
-		// RowCount/ColumnCount変更時にフィルタ更新
-		if (
-			e.PropertyName == nameof(TableShapeParameter.RowCount)
-			|| e.PropertyName == nameof(TableShapeParameter.ColumnCount)
-		)
-		{
-			UpdateCells();
-			Debug.WriteLine(
-				$"\tUpdateFilteredCells(): {e.PropertyName}"
-			);
-		}
 	}
 
-	void UpdateCells()
+	async ValueTask UpdateCellsAsync<T>(T e)
+		where T : EventArgs
 	{
 		if (
 			_properties[0].PropertyOwner
@@ -266,7 +305,7 @@ public class TableShapeEditorViewModel : IDisposable
 			return;
 		}
 
-		BeginEdit?.Invoke(this, EventArgs.Empty);
+		BeginEdit?.Invoke(this, e);
 
 		// Row/Colを超えたCellデータは消す必要はないが、
 		// 存在しなければ追加する必要がある
@@ -280,7 +319,7 @@ public class TableShapeEditorViewModel : IDisposable
 			{
 				if (i >= Cells.Count)
 				{
-					Cells.Add([]);	//とりあえず空行追加
+					Cells.Add([]); //とりあえず空行追加
 				}
 			}
 		}
@@ -294,12 +333,14 @@ public class TableShapeEditorViewModel : IDisposable
 				if (i >= row.Count)
 				{
 					//足りない列分のセルを追加
-					row.Add(new TableCell()
-					{
-						Row = j + 1,
-						Col = i + 1,
-						Text = string.Empty,
-					});
+					row.Add(
+						new TableCell()
+						{
+							Row = j + 1,
+							Col = i + 1,
+							Text = string.Empty,
+						}
+					);
 				}
 			}
 		}
@@ -317,11 +358,12 @@ public class TableShapeEditorViewModel : IDisposable
 			}
 		}
 
-		UpdateFilteredCells();
-		EndEdit?.Invoke(this, EventArgs.Empty);
+		await UpdateFilteredCellsAsync()
+			.ConfigureAwait(true);
+		EndEdit?.Invoke(this, e);
 	}
 
-	void UpdateFilteredCells()
+	async ValueTask UpdateFilteredCellsAsync()
 	{
 		if (
 			_properties[0].PropertyOwner
@@ -343,8 +385,27 @@ public class TableShapeEditorViewModel : IDisposable
 				);
 			if (filteredRow.Count > 0)
 				FilteredCells.Add(filteredRow);
-			Debug.WriteLine("filtered:" + FilteredCells.Count);
+			Debug.WriteLine(
+				"filtered:" + FilteredCells.Count
+			);
 		}
+
+		//Refresh()呼ばないと更新されないことがある
+		await TablePile
+			.RentAsync(table =>
+			{
+				foreach (var item in table.Items)
+				{
+					if(item is ItemsControl itemControl)
+					{
+						// itemの更新処理
+						itemControl.Items.Refresh();
+					}
+				}
+				table.Items.Refresh();
+				return default;
+			})
+			.ConfigureAwait(true);
 	}
 
 	(int maxRow, int maxCol) GetMaxRowCol(
@@ -384,14 +445,13 @@ public class TableShapeEditorViewModel : IDisposable
 			{
 				if (_parameter is not null)
 				{
-					_parameter.ColumnCount.PropertyChanged -=
+					_parameter
+						.ColumnCount
+						.PropertyChanged -=
 						Item_PropertyChanged;
 					_parameter.RowCount.PropertyChanged -=
 						Item_PropertyChanged;
 				}
-
-				CellTable?.Clear();
-				CellTable?.Dispose();
 			}
 
 			// アンマネージド リソース (アンマネージド オブジェクト) を解放し、ファイナライザーをオーバーライドします
