@@ -39,6 +39,8 @@
         Grid.Row="0"
         HorizontalScrollBarVisibility="Auto"
         VerticalScrollBarVisibility="Auto"
+        MaxHeight="150"
+        Margin="2"
         >
         <ItemsControl
           x:Name="tableLikeList"
@@ -71,7 +73,7 @@
                 <ItemsControl.ItemTemplate>
                   <DataTemplate>
                     <c:TextEditor
-                      Height="30"
+                      MinHeight="30"
                       MinWidth="100"
                       Margin="0"
                       Padding="0"
