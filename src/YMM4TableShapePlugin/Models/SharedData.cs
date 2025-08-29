@@ -4,6 +4,7 @@ using System.Windows.Media;
 using YMM4TableShapePlugin.Enums;
 
 using YukkuriMovieMaker.Commons;
+using YukkuriMovieMaker.Plugin.Effects;
 
 namespace YMM4TableShapePlugin.Models;
 
@@ -28,6 +29,8 @@ internal class SharedData
 	CellContentAlign CellTextAlign { get; }
 	bool IsCellFontBold { get; }
 	bool IsCellFontItalic { get; }
+
+	ImmutableList<IVideoEffect> CellVideoEffect { get; }
 
 	TableModel TableModel { get; }
 	ShowHeader HeaderDisplay { get; }
@@ -61,6 +64,7 @@ internal class SharedData
 		CellTextAlign = parameter.CellTextAlign;
 		IsCellFontBold = parameter.IsCellFontBold;
 		IsCellFontItalic = parameter.IsCellFontItalic;
+		CellVideoEffect = parameter.CellVideoEffect;
 
 		HeaderDisplay = parameter.HeaderDisplay;
 		HeaderRowBackgroundColor =
@@ -97,6 +101,7 @@ internal class SharedData
 		parameter.CellTextAlign = CellTextAlign;
 		parameter.IsCellFontBold = IsCellFontBold;
 		parameter.IsCellFontItalic = IsCellFontItalic;
+		parameter.CellVideoEffect = CellVideoEffect;
 
 		parameter.HeaderDisplay = HeaderDisplay;
 		parameter.HeaderRowBackgroundColor =

@@ -11,6 +11,7 @@ using YukkuriMovieMaker.Controls;
 using YukkuriMovieMaker.Exo;
 using YukkuriMovieMaker.ItemEditor.CustomVisibilityAttributes;
 using YukkuriMovieMaker.Player.Video;
+using YukkuriMovieMaker.Plugin.Effects;
 using YukkuriMovieMaker.Plugin.Shape;
 using YukkuriMovieMaker.Project;
 
@@ -203,6 +204,19 @@ internal class TableShapeParameter : ShapeParameterBase
 	}
 	bool _isFontItalic;
 
+	[Display(
+		GroupName = "共通セルスタイル",
+		Name = "テキストエフェクト",
+		Description = ""
+	)]
+	[VideoEffectSelector(IsEffectItem = false)]
+	public ImmutableList<IVideoEffect> CellVideoEffect
+	{
+		get => _videoEffect;
+		set => Set(ref _videoEffect, value);
+	}
+	ImmutableList<IVideoEffect> _videoEffect = [];
+
 	#endregion common_cell_style
 
 	#region header	//------------------------------------------//
@@ -285,6 +299,19 @@ internal class TableShapeParameter : ShapeParameterBase
 	[ShowPropertyEditorWhen(nameof(IsShowCellList), false)]
 	public ImmutableList<Models.TableCell> Cells =>
 		[.. TableModel.Cells.SelectMany(c => c)];
+
+	[Display(
+		GroupName = "高度な設定",
+		Name = "",
+		Description = ""
+	)]
+	[ToggleSlider]
+	public bool IsDummy
+	{
+		get => _isDummy;
+		set { Set(ref _isDummy, value); }
+	}
+	bool _isDummy;
 
 	public TableShapeParameter(SharedDataStore? sharedData)
 		: base(sharedData)

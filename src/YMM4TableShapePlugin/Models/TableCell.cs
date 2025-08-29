@@ -11,6 +11,7 @@ using YMM4TableShapePlugin.Enums;
 using YukkuriMovieMaker.Commons;
 using YukkuriMovieMaker.Controls;
 using YukkuriMovieMaker.ItemEditor.CustomVisibilityAttributes;
+using YukkuriMovieMaker.Plugin.Effects;
 using YukkuriMovieMaker.Resources.Localization;
 
 namespace YMM4TableShapePlugin.Models;
@@ -279,6 +280,23 @@ public sealed class TableCell
 	}
 	private CellContentAlign _textAlign =
 		CellContentAlign.MiddleCenter;
+
+	[Display(
+		GroupName = "セル",
+		Name = "テキストエフェクト",
+		Description = ""
+	)]
+	[ShowPropertyEditorWhen(
+		nameof(StylePriority),
+		CellStylePriority.Override
+	)]
+	[VideoEffectSelector(IsEffectItem = false)]
+	public ImmutableList<IVideoEffect> VideoEffect
+	{
+		get => _videoEffect;
+		set => Set(ref _videoEffect, value);
+	}
+	ImmutableList<IVideoEffect> _videoEffect = [];
 
 	public TableCell? ParentCell { get; set; }
 
