@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -30,6 +31,9 @@ public partial class TableShapeEditor
 	public event EventHandler? BeginEdit;
 	public event EventHandler? EndEdit;
 
+	public YukkuriMovieMaker.Controls.PropertiesEditor PropertyEditorControl =>
+		innerPropertyEditor;
+
 	public TableShapeEditor()
 	{
 		InitializeComponent();
@@ -40,10 +44,13 @@ public partial class TableShapeEditor
 	public void SetEditorInfo(IEditorInfo info)
 	{
 		EditorInfo = info;
-		if (info is not null && DataContext is TableShapeEditorViewModel vm)
+		if(info is null){ return; }
+
+		if (DataContext is TableShapeEditorViewModel vm)
 		{
 			vm.EditorInfo = info;
 		}
+		innerPropertyEditor.SetEditorInfo(info);
 	}
 
 	void InnerPropertyEditor_DataContextChanged(
@@ -85,6 +92,9 @@ public partial class TableShapeEditor
 		EventArgs e
 	)
 	{
+		if (DataContext is TableShapeEditorViewModel vm) {
+			vm.ForceRefresh();
+		}
 		EndEdit?.Invoke(this, e);
 	}
 }

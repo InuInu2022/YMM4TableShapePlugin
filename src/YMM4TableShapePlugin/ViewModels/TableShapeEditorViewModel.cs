@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
@@ -45,6 +46,8 @@ public class TableShapeEditorViewModel : IDisposable
 	public Well<TextEditor> TextEditorWell { get; set; } =
 		Well.Factory.Create<TextEditor>();
 
+	public Command UpdateCommand { get; private set; }
+
 	public double EditorHeight { get; private set; } = 100;
 
 	public IEditorInfo? EditorInfo { get; set; }
@@ -72,10 +75,6 @@ public class TableShapeEditorViewModel : IDisposable
 		)
 		{
 			_parameter = parameter;
-			_parameter.RowCount.PropertyChanged +=
-				Item_PropertyChanged;
-			_parameter.ColumnCount.PropertyChanged +=
-				Item_PropertyChanged;
 
 			Debug.WriteLine(
 				"_parameter.GetHashCode():"
@@ -98,7 +97,250 @@ public class TableShapeEditorViewModel : IDisposable
 			}
 		}
 
+		// TableModelの変更を監視
+		if (_parameter?.TableModel is not null)
+		{
+			_parameter.TableModel.PropertyChanged +=
+				OnTableModelPropertyChanged;
+			SubscribeToCellsChanges(
+				_parameter.TableModel.Cells
+			);
+		}
+
 		InitializeEventHandlers();
+	}
+
+	private void OnTableModelPropertyChanged(
+		object? sender,
+		PropertyChangedEventArgs e
+	)
+	{
+		if (
+			string.Equals(
+				e.PropertyName,
+				nameof(TableModel.Cells),
+				StringComparison.Ordinal
+			)
+		)
+		{
+			// Cellsが差し替わった場合、再購読
+			UnsubscribeFromCellsChanges();
+			if (_parameter?.TableModel?.Cells is not null)
+			{
+				SubscribeToCellsChanges(
+					_parameter.TableModel.Cells
+				);
+				_ = UpdateCellsSafetyAsync();
+			}
+		}
+	}
+
+	private void SubscribeToCellsChanges(
+		ObservableCollection<
+			ObservableCollection<TableCell>
+		> cells
+	)
+	{
+		cells.CollectionChanged += OnCellsCollectionChanged;
+		foreach (var row in cells)
+		{
+			row.CollectionChanged += OnRowCollectionChanged;
+			foreach (var cell in row)
+			{
+				cell.PropertyChanged +=
+					OnCellPropertyChanged;
+				cell.PropertyChanging +=
+					OnCellPropertyChanging;
+			}
+		}
+	}
+
+	private void UnsubscribeFromCellsChanges()
+	{
+		if (_parameter?.TableModel?.Cells is null)
+		{
+			return;
+		}
+		_parameter.TableModel.Cells.CollectionChanged -=
+			OnCellsCollectionChanged;
+		foreach (var row in _parameter.TableModel.Cells)
+		{
+			row.CollectionChanged -= OnRowCollectionChanged;
+			foreach (var cell in row)
+			{
+				cell.PropertyChanged -=
+					OnCellPropertyChanged;
+				cell.PropertyChanging -=
+					OnCellPropertyChanging;
+			}
+		}
+	}
+
+	private void OnCellsCollectionChanged(
+		object? sender,
+		NotifyCollectionChangedEventArgs e
+	)
+	{
+		// 行の追加/削除時に購読を更新
+		if (e.NewItems is not null)
+		{
+			foreach (
+				ObservableCollection<TableCell> newRow in e.NewItems
+			)
+			{
+				newRow.CollectionChanged +=
+					OnRowCollectionChanged;
+				foreach (var cell in newRow)
+				{
+					cell.PropertyChanged +=
+						OnCellPropertyChanged;
+					cell.PropertyChanging +=
+						OnCellPropertyChanging;
+				}
+			}
+		}
+		if (e.OldItems is not null)
+		{
+			foreach (
+				ObservableCollection<TableCell> oldRow in e.OldItems
+			)
+			{
+				oldRow.CollectionChanged -=
+					OnRowCollectionChanged;
+				foreach (var cell in oldRow)
+				{
+					cell.PropertyChanged -=
+						OnCellPropertyChanged;
+					cell.PropertyChanging -=
+						OnCellPropertyChanging;
+				}
+			}
+		}
+		_ = UpdateCellsSafetyAsync();
+	}
+
+	/// <summary>
+	/// voidイベントハンドラ内でセルの更新を安全に行います。
+	/// awaitで処理を待たないでください。
+	/// 処理を待つ場合は `ContinueWith`で続けてください。
+	/// </summary>
+	/// <returns></returns>
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	async Task UpdateCellsSafetyAsync()
+	{
+		try
+		{
+			await UpdateCellsFromModelAsync()
+				.ConfigureAwait(true);
+		}
+		catch (Exception ex)
+		{
+			Debug.WriteLine($"Error occurred while updating cells: {ex.Message}");
+			Log.Default.Write($"[{nameof(TableShapePlugin)}] {ex.Message}", ex);
+		}
+	}
+
+	private void OnRowCollectionChanged(
+		object? sender,
+		NotifyCollectionChangedEventArgs e
+	)
+	{
+		// 列の追加/削除時に購読を更新
+		if (e.NewItems is not null)
+		{
+			foreach (TableCell newCell in e.NewItems)
+			{
+				newCell.PropertyChanged +=
+					OnCellPropertyChanged;
+				newCell.PropertyChanging +=
+					OnCellPropertyChanging;
+			}
+		}
+		if (e.OldItems is not null)
+		{
+			foreach (TableCell oldCell in e.OldItems)
+			{
+				oldCell.PropertyChanged -=
+					OnCellPropertyChanged;
+				oldCell.PropertyChanging -=
+					OnCellPropertyChanging;
+			}
+		}
+		_ = UpdateCellsSafetyAsync();
+	}
+
+	/// <summary>
+	/// セルのプロパティが変更されたときに呼び出されます。
+	/// </summary>
+	void OnCellPropertyChanged(
+		object? sender,
+		PropertyChangedEventArgs e
+	)
+	{
+		// セルのプロパティ変更時にUIを更新
+		if (
+			string.Equals(
+				e.PropertyName,
+				nameof(TableCell.Row),
+				StringComparison.Ordinal
+			)
+			|| string.Equals(
+				e.PropertyName,
+				nameof(TableCell.Col),
+				StringComparison.Ordinal
+			)
+		)
+		{
+			_ = UpdateCellsSafetyAsync();
+		}
+	}
+
+	/// <summary>
+	/// セルのプロパティが変更される前に呼び出されます。
+	/// </summary>
+	void OnCellPropertyChanging(
+		object? sender,
+		PropertyChangingEventArgs e
+	)
+	{
+		// セルのプロパティ変更時にUIを随時更新
+		switch (e.PropertyName)
+		{
+			case nameof(TableCell.Text):
+			case nameof(TableCell.TextStyle):
+			case nameof(TableCell.FontSize):
+			case nameof(TableCell.Font):
+			case nameof(TableCell.FontColor):
+			case nameof(TableCell.FontOutlineColor):
+			case nameof(TableCell.VideoEffect):
+				ForceRefresh();
+				break;
+			default:
+				break;
+		}
+	}
+
+	async ValueTask UpdateCellsFromModelAsync()
+	{
+		if (_parameter?.TableModel?.Cells is null)
+			return;
+
+		// CellsをTableModel.Cellsに同期
+		Cells.Clear();
+		foreach (var row in _parameter.TableModel.Cells)
+		{
+			var newRow =
+				new ObservableCollection<TableCell>();
+			foreach (var cell in row)
+			{
+				newRow.Add(cell); // 参照コピー（変更は即時反映）
+			}
+			Cells.Add(newRow);
+		}
+
+		// FilteredCellsも更新
+		await UpdateFilteredCellsAsync()
+			.ConfigureAwait(true);
 	}
 
 	[SuppressMessage("Usage", "VSTHRD100")]
@@ -140,6 +382,7 @@ public class TableShapeEditorViewModel : IDisposable
 		}
 	}
 
+	[MemberNotNull(nameof(UpdateCommand))]
 	void InitializeEventHandlers()
 	{
 		MainControlWell.Add<RoutedEventArgs>(
@@ -170,6 +413,17 @@ public class TableShapeEditorViewModel : IDisposable
 		InitializeTextEditorEvents();
 
 		InitializeThumbDragEvents();
+
+		EndEdit += (s, e) =>
+		{
+			ForceRefresh();
+		};
+
+		UpdateCommand = Command.Factory.Create(() =>
+		{
+			ForceRefresh();
+			return default;
+		});
 	}
 
 	void InitializeTextEditorEvents()
@@ -209,6 +463,15 @@ public class TableShapeEditorViewModel : IDisposable
 				return default;
 			}
 		);
+	}
+
+	public void ForceRefresh()
+	{
+		//即時描画反映させるためのダミー処理
+		if (_parameter is not null)
+		{
+			_parameter.IsDummy = !_parameter.IsDummy;
+		}
 	}
 
 	/// <summary>
@@ -273,15 +536,6 @@ public class TableShapeEditorViewModel : IDisposable
 		}
 	}
 
-	void Item_PropertyChanged(
-		object? sender,
-		PropertyChangedEventArgs e
-	)
-	{
-		//呼ばれない？
-		//Animationプロパティは差し替え時にしかよばれない
-	}
-
 	async ValueTask UpdateCellsAsync<T>(T e)
 		where T : EventArgs
 	{
@@ -311,7 +565,9 @@ public class TableShapeEditorViewModel : IDisposable
 		// 存在しなければ追加する必要がある
 
 		(int maxRow, int maxCol) = GetMaxRowCol(param);
-		Debug.WriteLine($"UpdateCells(): r:{maxRow}, c:{maxCol}");
+		Debug.WriteLine(
+			$"UpdateCells(): r:{maxRow}, c:{maxCol}"
+		);
 
 		if (Cells.Count < maxRow)
 		{
@@ -424,7 +680,7 @@ public class TableShapeEditorViewModel : IDisposable
 			{
 				foreach (var item in table.Items)
 				{
-					if(item is ItemsControl itemControl)
+					if (item is ItemsControl itemControl)
 					{
 						// itemの更新処理
 						itemControl.Items.Refresh();
@@ -462,6 +718,8 @@ public class TableShapeEditorViewModel : IDisposable
 			return default;
 		}
 
+		ForceRefresh();
+
 		return default;
 	}
 
@@ -471,14 +729,11 @@ public class TableShapeEditorViewModel : IDisposable
 		{
 			if (disposing)
 			{
-				if (_parameter is not null)
+				UnsubscribeFromCellsChanges();
+				if (_parameter?.TableModel is not null)
 				{
-					_parameter
-						.ColumnCount
-						.PropertyChanged -=
-						Item_PropertyChanged;
-					_parameter.RowCount.PropertyChanged -=
-						Item_PropertyChanged;
+					_parameter.TableModel.PropertyChanged -=
+						OnTableModelPropertyChanged;
 				}
 			}
 

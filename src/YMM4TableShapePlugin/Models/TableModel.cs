@@ -66,7 +66,7 @@ public sealed class TableModel
 
 	public TableModel(int rows, int cols)
 	{
-		Resize(rows, cols);
+		//Resize(rows, cols);
 	}
 
 	[System.Diagnostics.CodeAnalysis.SuppressMessage(

@@ -57,7 +57,6 @@ public sealed class TableCell
 		get => _text;
 		set
 		{
-			BeginEdit();
 			Set(
 				ref _text,
 				value,
@@ -65,7 +64,6 @@ public sealed class TableCell
 				"Label",
 				"Description"
 			);
-			EndEditAsync().AsTask().Wait();
 		}
 	}
 	string _text = string.Empty;
@@ -106,12 +104,14 @@ public sealed class TableCell
 		get => _font;
 		set
 		{
-			BeginEdit();
 			Set(ref _font, value);
-			EndEditAsync().AsTask().Wait();
 		}
 	}
-	string _font = "Yu Gothic UI";
+	string _font = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName switch
+	{
+		"ja" => "Yu Gothic UI",
+		_ => System.Windows.SystemFonts.MessageFontFamily.Source,
+	};
 
 	[Display(
 		GroupName = "セル",
@@ -130,9 +130,7 @@ public sealed class TableCell
 		get => _fontColor;
 		set
 		{
-			BeginEdit();
 			Set(ref _fontColor, value);
-			EndEditAsync().AsTask().Wait();
 		}
 	}
 	private Color _fontColor = Colors.Black;
@@ -204,10 +202,10 @@ public sealed class TableCell
 	[ToggleSlider]
 	public bool IsFontBold
 	{
-		get => isFontBold;
-		set { Set(ref isFontBold, value); }
+		get => _isFontBold;
+		set { Set(ref _isFontBold, value); }
 	}
-	bool isFontBold;
+	bool _isFontBold;
 
 	[Display(
 		GroupName = "セル",
@@ -221,10 +219,10 @@ public sealed class TableCell
 	[ToggleSlider]
 	public bool IsFontItalic
 	{
-		get => isFontItalic;
-		set { Set(ref isFontItalic, value); }
+		get => _isFontItalic;
+		set { Set(ref _isFontItalic, value); }
 	}
-	bool isFontItalic;
+	bool _isFontItalic;
 
 
 	/// <summary>
@@ -242,9 +240,7 @@ public sealed class TableCell
 		get { return _rowSpan; }
 		set
 		{
-			BeginEdit();
 			Set(ref _rowSpan, value);
-			EndEditAsync().AsTask().Wait();
 		}
 	}
 	public int ColSpan
@@ -252,9 +248,7 @@ public sealed class TableCell
 		get { return _colSpan; }
 		set
 		{
-			BeginEdit();
 			Set(ref _colSpan, value);
-			EndEditAsync().AsTask().Wait();
 		}
 	}
 
@@ -273,9 +267,7 @@ public sealed class TableCell
 		get => _textAlign;
 		set
 		{
-			BeginEdit();
 			Set(ref _textAlign, value);
-			EndEditAsync().AsTask().Wait();
 		}
 	}
 	private CellContentAlign _textAlign =
@@ -324,6 +316,7 @@ public sealed class TableCell
 			TextStyle = TextStyle,
 			FontOutlineColor = FontOutlineColor,
 			StylePriority = StylePriority,
+			VideoEffect = VideoEffect,
 			Text = Text,
 		};
 	}
