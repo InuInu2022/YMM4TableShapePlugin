@@ -371,33 +371,55 @@ internal partial class TableShapeSource : IShapeSource2
 						textRect.Top
 					);
 
-					textLayout.Draw(
-						nint.Zero,
-						new Renderers.OutlineTextRenderer(
-							ctx.DeviceContext,
-							GetTextBrush(
-								fontOutlineColor
-							),
-							GetTextBrush(fontColor),
-							origin,
-							outlineWidth,
-							textStyle
-						),
-						0.0f,
-						0.0f
+					// テキスト領域でクリッピングして描画（領域をはみ出す文字を切る）
+					ctx.DeviceContext.PushAxisAlignedClip(
+						cellRect,
+						AntialiasMode.Aliased
 					);
+					try
+					{
+						textLayout.Draw(
+							nint.Zero,
+							new Renderers.OutlineTextRenderer(
+								ctx.DeviceContext,
+								GetTextBrush(fontOutlineColor),
+								GetTextBrush(fontColor),
+								origin,
+								outlineWidth,
+								textStyle
+							),
+							0.0f,
+							0.0f
+						);
+					}
+					finally
+					{
+						ctx.DeviceContext.PopAxisAlignedClip();
+					}
 				}
 				else if (
 					textStyle
 					== CellTextStyle.Normal
 				)
 				{
-					ctx.DeviceContext.DrawText(
-						cell.Text,
-						textFormat,
-						textRect,
-						GetTextBrush(fontColor)
+					// 通常描画も同様にテキスト矩形でクリップ
+					ctx.DeviceContext.PushAxisAlignedClip(
+						cellRect,
+						AntialiasMode.Aliased
 					);
+					try
+					{
+						ctx.DeviceContext.DrawText(
+							cell.Text,
+							textFormat,
+							textRect,
+							GetTextBrush(fontColor)
+						);
+					}
+					finally
+					{
+						ctx.DeviceContext.PopAxisAlignedClip();
+					}
 				}
 			}
 		}
