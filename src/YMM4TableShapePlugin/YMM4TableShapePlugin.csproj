@@ -44,4 +44,7 @@
   <ItemGroup>
     <PackageReference Include="Epoxy.Wpf" Version="1.16.0" />
   </ItemGroup>
+  <ItemGroup Condition="'$(DesignTimeBuild)'=='true'">
+    <Compile Include="$(IntermediateOutputPath)**\*.g.cs" />
+  </ItemGroup>
 </Project>
