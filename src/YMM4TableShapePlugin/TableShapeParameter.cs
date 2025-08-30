@@ -300,12 +300,14 @@ internal class TableShapeParameter : ShapeParameterBase
 	public ImmutableList<Models.TableCell> Cells =>
 		[.. TableModel.Cells.SelectMany(c => c)];
 
+	/*
 	[Display(
 		GroupName = "高度な設定",
 		Name = "",
 		Description = ""
 	)]
 	[ToggleSlider]
+	*/
 	public bool IsDummy
 	{
 		get => _isDummy;
