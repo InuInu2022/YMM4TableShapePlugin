@@ -31,7 +31,7 @@ internal class OutlineTextRenderer(
 			StartCap = CapStyle.Square,
 			EndCap = CapStyle.Square,
 			DashCap = CapStyle.Square,
-			MiterLimit = 10.0f,
+			MiterLimit = 2.0f,
 		};
 	static readonly StrokeStyleProperties roundedBorderStroke =
 		new()
