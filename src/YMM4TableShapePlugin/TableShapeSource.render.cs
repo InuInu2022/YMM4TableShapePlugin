@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Numerics;
 using System.Reflection.Metadata;
 using System.Windows.Documents;
@@ -15,7 +16,6 @@ using YukkuriMovieMaker.Commons;
 using YukkuriMovieMaker.Player.Video;
 using YukkuriMovieMaker.Plugin.Shape;
 using static YMM4TableShapePlugin.TableShapeSource;
-using System.Linq;
 
 namespace YMM4TableShapePlugin;
 
@@ -159,7 +159,8 @@ internal partial class TableShapeSource : IShapeSource2
 		CellContentAlign textAlign,
 		Animation padding,
 		bool isFontBold,
-		bool isFontItalic
+		bool isFontItalic,
+		Animation lineHeightRate
 	) GetEffectiveCellStyle(
 		Models.TableCell cell,
 		TableShapeParameter param
@@ -177,7 +178,8 @@ internal partial class TableShapeSource : IShapeSource2
 				param.CellTextAlign,
 				param.CellPadding,
 				param.IsCellFontBold,
-				param.IsCellFontItalic
+				param.IsCellFontItalic,
+				param.CellLineHeightRate
 			),
 			CellStylePriority.Override => (
 				cell.Font,
@@ -188,7 +190,8 @@ internal partial class TableShapeSource : IShapeSource2
 				cell.TextAlign,
 				cell.FontPadding,
 				cell.IsFontBold,
-				cell.IsFontItalic
+				cell.IsFontItalic,
+				cell.FontLineHeightRate
 			),
 			_ => (
 				param.CellFont,
@@ -199,7 +202,8 @@ internal partial class TableShapeSource : IShapeSource2
 				param.CellTextAlign,
 				param.CellPadding,
 				param.IsCellFontBold,
-				param.IsCellFontItalic
+				param.IsCellFontItalic,
+				param.CellLineHeightRate
 			),
 		};
 	}
@@ -261,7 +265,8 @@ internal partial class TableShapeSource : IShapeSource2
 					textAlign,
 					fontPadding,
 					isFontBold,
-					isFontItalic
+					isFontItalic,
+					lineHeightRate
 				) = GetEffectiveCellStyle(cell, Parameter);
 
 				var fSize = (float)
@@ -285,28 +290,31 @@ internal partial class TableShapeSource : IShapeSource2
 				);
 				var fontSize =
 					fSize > 0f ? fSize : DefaultFontSize;
+
+				var lineRate = lineHeightRate
+					.GetValue(ctx.Frame, ctx.Length, ctx.Fps);
+				var actualLineSpacing = (float)lineRate / 100.0f * fontSize;
+
+				// 1行用と複数行用でキャッシュkeyを分離
 				var key = (
 					fontFamilyName,
 					fontSize,
 					fontStyle,
-					fontWeight
+					fontWeight,
+					lineRate,
+					LineSpacingMethod.Default // 仮でDefault、後で切り替え
 				);
 
-				if (
-					!textFormatCache.TryGetValue(
-						key,
-						out var textFormat
-					)
-				)
+				// textFormatキャッシュ取得
+				if (!textFormatCache.TryGetValue(key, out var textFormat))
 				{
-					textFormat =
-						ctx.WriteFactory!.CreateTextFormat(
-							fontFamilyName: fontFamilyName,
-							fontSize: fontSize,
-							fontStretch: FontStretch.Normal,
-							fontStyle: fontStyle,
-							fontWeight: fontWeight
-						);
+					textFormat = ctx.WriteFactory!.CreateTextFormat(
+						fontFamilyName: fontFamilyName,
+						fontSize: fontSize,
+						fontStretch: FontStretch.Normal,
+						fontStyle: fontStyle,
+						fontWeight: fontWeight
+					);
 					textFormatCache[key] = textFormat;
 					disposer.Collect(textFormat);
 				}
@@ -355,20 +363,52 @@ internal partial class TableShapeSource : IShapeSource2
 					(float)padding
 				);
 
+				//行間スペース
+				var textLayout = CreateTextLayout(
+					ctx,
+					cell,
+					textFormat,
+					textRect
+				);
+				var actualLineCount =
+					GetLineMetricsAndSetSpacing(
+						fontSize,
+						textFormat,
+						textLayout,
+						actualLineSpacing
+					);
+
 				if (
 					textStyle == CellTextStyle.ShapedBorder
 					|| textStyle
 						== CellTextStyle.RoundedBorder
 				)
 				{
-					var textLayout =
-						ctx.WriteFactory!.CreateTextLayout(
-							cell.Text,
-							textFormat,
-							textRect.Width,
-							textRect.Height
+					// 余分な高さ分を補正（中央揃え時のみ、1行は補正しない）
+					if (
+						textFormat.ParagraphAlignment
+							== ParagraphAlignment.Center
+						&& actualLineCount > 1
+					)
+					{
+						var totalTextHeight =
+							actualLineCount
+							* actualLineSpacing;
+						var cellCenterY =
+							textRect.Top
+							+ textRect.Height / 2;
+						var newTop =
+							cellCenterY
+							- totalTextHeight / 2;
+						var newBottom =
+							newTop + totalTextHeight;
+						textRect = new Rect(
+							textRect.Left,
+							newTop,
+							textRect.Right,
+							newBottom
 						);
-					disposer.Collect(textLayout);
+					}
 
 					var outlineWidth = (float)
 						ctx.OuterBorderWidth;
@@ -431,6 +471,57 @@ internal partial class TableShapeSource : IShapeSource2
 				}
 			}
 		}
+	}
+
+	static int GetLineMetricsAndSetSpacing(
+		float fontSize,
+		IDWriteTextFormat textFormat,
+		IDWriteTextLayout textLayout,
+		float actualLineSpacing
+	)
+	{
+		var metrics = new LineMetrics[10];
+		textLayout.GetLineMetrics(
+			metrics,
+			out var actualLineCount
+		);
+
+		if (actualLineCount > 1)
+		{
+			textFormat.SetLineSpacing(
+				LineSpacingMethod.Uniform,
+				actualLineSpacing,
+				fontSize * 0.85f
+			);
+		}
+		else
+		{
+			textFormat.SetLineSpacing(
+				LineSpacingMethod.Default,
+				fontSize,
+				fontSize * 0.85f
+			);
+		}
+
+		return actualLineCount;
+	}
+
+	[SuppressMessage("Usage", "SMA0040:Missing Using Statement", Justification = "<保留中>")]
+	private IDWriteTextLayout CreateTextLayout(
+		TableRenderContext ctx,
+		Models.TableCell cell,
+		IDWriteTextFormat textFormat,
+		Rect textRect
+	)
+	{
+		var textLayout = ctx.WriteFactory!.CreateTextLayout(
+			cell.Text,
+			textFormat,
+			textRect.Width,
+			textRect.Height
+		);
+		disposer.Collect(textLayout);
+		return textLayout;
 	}
 
 	/// <summary>
@@ -618,36 +709,103 @@ internal partial class TableShapeSource : IShapeSource2
 	)
 	{
 		var family = fontFamilyName;
-		var weight = isBold ? FontWeight.Bold : FontWeight.Normal;
-		var style = isItalic ? FontStyle.Italic : FontStyle.Normal;
+		var weight = isBold
+			? FontWeight.Bold
+			: FontWeight.Normal;
+		var style = isItalic
+			? FontStyle.Italic
+			: FontStyle.Normal;
 
 		// FontWeightサフィックス対応表
-		var weightSuffixes = new Dictionary<string, FontWeight>(StringComparer.OrdinalIgnoreCase)
+		var weightSuffixes = new Dictionary<
+			string,
+			FontWeight
+		>(StringComparer.OrdinalIgnoreCase)
 		{
-			{ $" {nameof(FontWeight.ExtraBold)}", FontWeight.ExtraBold },
-			{ $" {nameof(FontWeight.UltraBold)}", FontWeight.UltraBold },
-			{ $" {nameof(FontWeight.Bold)}", FontWeight.Bold },
-			{ $" {nameof(FontWeight.SemiBold)}", FontWeight.SemiBold },
-			{ $" {nameof(FontWeight.DemiBold)}", FontWeight.DemiBold },
-			{ $" {nameof(FontWeight.Medium)}", FontWeight.Medium },
-			{ $" {nameof(FontWeight.Light)}", FontWeight.Light },
-			{ $" {nameof(FontWeight.ExtraLight)}", FontWeight.ExtraLight },
-			{ $" {nameof(FontWeight.UltraLight)}", FontWeight.UltraLight },
-			{ $" {nameof(FontWeight.Thin)}", FontWeight.Thin },
-			{ $" {nameof(FontWeight.Black)}", FontWeight.Black },
-			{ $" {nameof(FontWeight.Heavy)}", FontWeight.Heavy },
-			{ $" {nameof(FontWeight.UltraBlack)}", FontWeight.UltraBlack },
-			{ $" {nameof(FontWeight.Normal)}", FontWeight.Normal },
-			{ $" {nameof(FontWeight.Regular)}", FontWeight.Normal },
-			{ $" {nameof(FontWeight.SemiLight)}", FontWeight.SemiLight },
-			{ $" {nameof(FontWeight.ExtraBlack)}", FontWeight.ExtraBlack },
+			{
+				$" {nameof(FontWeight.ExtraBold)}",
+				FontWeight.ExtraBold
+			},
+			{
+				$" {nameof(FontWeight.UltraBold)}",
+				FontWeight.UltraBold
+			},
+			{
+				$" {nameof(FontWeight.Bold)}",
+				FontWeight.Bold
+			},
+			{
+				$" {nameof(FontWeight.SemiBold)}",
+				FontWeight.SemiBold
+			},
+			{
+				$" {nameof(FontWeight.DemiBold)}",
+				FontWeight.DemiBold
+			},
+			{
+				$" {nameof(FontWeight.Medium)}",
+				FontWeight.Medium
+			},
+			{
+				$" {nameof(FontWeight.Light)}",
+				FontWeight.Light
+			},
+			{
+				$" {nameof(FontWeight.ExtraLight)}",
+				FontWeight.ExtraLight
+			},
+			{
+				$" {nameof(FontWeight.UltraLight)}",
+				FontWeight.UltraLight
+			},
+			{
+				$" {nameof(FontWeight.Thin)}",
+				FontWeight.Thin
+			},
+			{
+				$" {nameof(FontWeight.Black)}",
+				FontWeight.Black
+			},
+			{
+				$" {nameof(FontWeight.Heavy)}",
+				FontWeight.Heavy
+			},
+			{
+				$" {nameof(FontWeight.UltraBlack)}",
+				FontWeight.UltraBlack
+			},
+			{
+				$" {nameof(FontWeight.Normal)}",
+				FontWeight.Normal
+			},
+			{
+				$" {nameof(FontWeight.Regular)}",
+				FontWeight.Normal
+			},
+			{
+				$" {nameof(FontWeight.SemiLight)}",
+				FontWeight.SemiLight
+			},
+			{
+				$" {nameof(FontWeight.ExtraBlack)}",
+				FontWeight.ExtraBlack
+			},
 		};
 
 		// FontStyleサフィックス対応表
-		var styleSuffixes = new Dictionary<string, FontStyle>(StringComparer.OrdinalIgnoreCase)
+		var styleSuffixes = new Dictionary<
+			string,
+			FontStyle
+		>(StringComparer.OrdinalIgnoreCase)
 		{
-			{ $" {nameof(FontStyle.Italic)}", FontStyle.Italic },
-			{ $" {nameof(FontStyle.Oblique)}", FontStyle.Oblique },
+			{
+				$" {nameof(FontStyle.Italic)}",
+				FontStyle.Italic
+			},
+			{
+				$" {nameof(FontStyle.Oblique)}",
+				FontStyle.Oblique
+			},
 		};
 
 		// 複数サフィックス対応: whileで繰り返し除去
@@ -655,13 +813,27 @@ internal partial class TableShapeSource : IShapeSource2
 		while (found)
 		{
 			found = false;
-			foreach (var kv in weightSuffixes.Where(kv => family.EndsWith(kv.Key, StringComparison.OrdinalIgnoreCase)))
+			foreach (
+				var kv in weightSuffixes.Where(kv =>
+					family.EndsWith(
+						kv.Key,
+						StringComparison.OrdinalIgnoreCase
+					)
+				)
+			)
 			{
 				weight = kv.Value;
 				family = family[..^kv.Key.Length];
 				found = true;
 			}
-			foreach (var kv in styleSuffixes.Where(kv => family.EndsWith(kv.Key, StringComparison.OrdinalIgnoreCase)))
+			foreach (
+				var kv in styleSuffixes.Where(kv =>
+					family.EndsWith(
+						kv.Key,
+						StringComparison.OrdinalIgnoreCase
+					)
+				)
+			)
 			{
 				style = kv.Value;
 				family = family[..^kv.Key.Length];

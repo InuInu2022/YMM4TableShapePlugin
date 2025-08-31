@@ -254,6 +254,21 @@ public sealed class TableCell
 	public Animation FontPadding { get; set; } =
 		new(0, 0, 100000);
 
+	[Display(
+		GroupName = "セル",
+		Name = "行の高さ",
+		Description = ""
+	)]
+	[ShowPropertyEditorWhen(
+		nameof(StylePriority),
+		CellStylePriority.Override
+	)]
+	[AnimationSlider("F0", "%", 50.0, 500.0)]
+	[DefaultValue(100.0)]
+	[Range(50, 500)]
+	public Animation FontLineHeightRate { get; set; } =
+		new Animation(100.0, 50.0, 500.0);
+
 
 	/// <summary>
 	/// 行番号
@@ -310,7 +325,7 @@ public sealed class TableCell
 
 	protected override IEnumerable<IAnimatable> GetAnimatables()
 	{
-		return [FontSize, FontPadding];
+		return [FontSize, FontPadding, FontLineHeightRate];
 	}
 
 	public object Clone()
@@ -331,6 +346,7 @@ public sealed class TableCell
 			StylePriority = StylePriority,
 			VideoEffect = VideoEffect,
 			FontPadding = FontPadding,
+			FontLineHeightRate = FontLineHeightRate,
 			Text = Text,
 		};
 	}
@@ -359,6 +375,7 @@ public sealed class TableCell
 			&& StylePriority == other.StylePriority
 			&& FontOutlineColor == other.FontOutlineColor
 			&& FontPadding == other.FontPadding
+			&& FontLineHeightRate == other.FontLineHeightRate
 			&& string.Equals(
 				Text,
 				other.Text,
@@ -396,7 +413,8 @@ public sealed class TableCell
 				IsFontBold,
 				IsFontItalic,
 				StylePriority,
-				FontPadding
+				FontPadding,
+				FontLineHeightRate
 			)
 		);
 	}

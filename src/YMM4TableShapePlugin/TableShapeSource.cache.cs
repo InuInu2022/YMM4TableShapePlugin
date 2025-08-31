@@ -34,7 +34,9 @@ internal partial class TableShapeSource : IShapeSource2
 			string fontFamily,
 			float fontSize,
 			FontStyle fontStyle,
-			FontWeight fontWeight
+			FontWeight fontWeight,
+			double lineHeightRate,
+			LineSpacingMethod lineSpacingMethod
 		),
 		IDWriteTextFormat
 	> textFormatCache = new();

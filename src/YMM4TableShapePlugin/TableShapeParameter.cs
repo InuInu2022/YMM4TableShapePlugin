@@ -204,6 +204,17 @@ internal class TableShapeParameter : ShapeParameterBase
 	}
 	bool _isFontItalic;
 
+	[Display(
+		GroupName = "共通セルスタイル",
+		Name = "行の高さ",
+		Description = ""
+	)]
+	[AnimationSlider("F0", "%", 50.0, 500.0)]
+	[DefaultValue(100.0)]
+	[Range(50, 500)]
+	public Animation CellLineHeightRate { get; set; } =
+		new Animation(100.0, 50.0, 500.0);
+
 	[Display(GroupName = "共通セルスタイル", Name = "余白")]
 	[AnimationSlider("F1", "", 0, 10)]
 	[DefaultValue(0.0)]
@@ -279,7 +290,7 @@ internal class TableShapeParameter : ShapeParameterBase
 	}
 	Color _headerColumnBackgroundColor = Colors.LightGray;
 
-	#endregion header
+	#endregion header //----------------------------------------//
 
 	[Display(GroupName = "", Name = "")]
 	[TableShapeEditor(
@@ -287,12 +298,16 @@ internal class TableShapeParameter : ShapeParameterBase
 	)]
 	public TableModel TableModel { get; set; } = new(1, 1);
 
+	#region advance //------------------------------------------//
+
+#if DEBUG
 	[Display(
 		GroupName = "高度な設定",
 		Name = "セルリストの表示",
 		Description = ""
 	)]
 	[EnumComboBox]
+#endif
 	public AdvancedDisplay IsShowCellList
 	{
 		get => _isShowCellList;
@@ -300,29 +315,29 @@ internal class TableShapeParameter : ShapeParameterBase
 	}
 	AdvancedDisplay _isShowCellList = AdvancedDisplay.None;
 
+#if DEBUG
 	[Display(
 		GroupName = "高度な設定",
-		Name = "セルリスト",
-		AutoGenerateField = true
+		Name = "セルリスト"//,
+		//AutoGenerateField = true
 	)]
 	[ShowPropertyEditorWhen(nameof(IsShowCellList), AdvancedDisplay.Show)]
+#endif
 	public ImmutableList<Models.TableCell> Cells =>
 		[.. TableModel.Cells.SelectMany(c => c)];
 
-	/*
-	[Display(
-		GroupName = "高度な設定",
-		Name = "",
-		Description = ""
-	)]
-	[ToggleSlider]
-	*/
+	/// <summary>
+	/// 描画強制更新のためのダミープロパティ
+	/// </summary>
+	[EditorBrowsable(EditorBrowsableState.Never)]
 	public bool IsDummy
 	{
 		get => _isDummy;
 		set { Set(ref _isDummy, value); }
 	}
 	bool _isDummy;
+
+	#endregion advance //----------------------------------------//
 
 	public TableShapeParameter(SharedDataStore? sharedData)
 		: base(sharedData)
@@ -404,6 +419,7 @@ internal class TableShapeParameter : ShapeParameterBase
 			TableModel,
 			CellFontSize,
 			CellPadding,
+			CellLineHeightRate,
 			.. Cells,
 			//.. TableModel.RowBoundaries,
 			//.. TableModel.ColumnBoundaries,
