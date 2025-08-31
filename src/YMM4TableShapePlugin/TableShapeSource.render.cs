@@ -156,6 +156,7 @@ internal partial class TableShapeSource : IShapeSource2
 		System.Windows.Media.Color fontOutlineColor,
 		CellTextStyle textStyle,
 		CellContentAlign textAlign,
+		Animation padding,
 		bool isFontBold,
 		bool isFontItalic
 	) GetEffectiveCellStyle(
@@ -173,6 +174,7 @@ internal partial class TableShapeSource : IShapeSource2
 				param.CellFontOutlineColor,
 				param.CellTextStyle,
 				param.CellTextAlign,
+				param.CellPadding,
 				param.IsCellFontBold,
 				param.IsCellFontItalic
 			),
@@ -183,6 +185,7 @@ internal partial class TableShapeSource : IShapeSource2
 				cell.FontOutlineColor,
 				cell.TextStyle,
 				cell.TextAlign,
+				cell.FontPadding,
 				cell.IsFontBold,
 				cell.IsFontItalic
 			),
@@ -193,6 +196,7 @@ internal partial class TableShapeSource : IShapeSource2
 				param.CellFontOutlineColor,
 				param.CellTextStyle,
 				param.CellTextAlign,
+				param.CellPadding,
 				param.IsCellFontBold,
 				param.IsCellFontItalic
 			),
@@ -254,6 +258,7 @@ internal partial class TableShapeSource : IShapeSource2
 					fontOutlineColor,
 					textStyle,
 					textAlign,
+					fontPadding,
 					isFontBold,
 					isFontItalic
 				) = GetEffectiveCellStyle(cell, Parameter);
@@ -339,7 +344,7 @@ internal partial class TableShapeSource : IShapeSource2
 					};
 
 				var padding =
-					Parameter.CellPadding.GetValue(
+					fontPadding.GetValue(
 						ctx.Frame,
 						ctx.Length,
 						ctx.Fps

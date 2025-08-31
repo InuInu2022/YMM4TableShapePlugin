@@ -192,6 +192,24 @@ public sealed class TableCell
 
 	[Display(
 		GroupName = "セル",
+		Name = "テキストの配置",
+		Description = ""
+	)]
+	[ShowPropertyEditorWhen(
+		nameof(StylePriority),
+		CellStylePriority.Override
+	)]
+	[EnumComboBox]
+	public CellContentAlign TextAlign
+	{
+		get => _textAlign;
+		set { Set(ref _textAlign, value); }
+	}
+	private CellContentAlign _textAlign =
+		CellContentAlign.MiddleCenter;
+
+	[Display(
+		GroupName = "セル",
 		Name = "太字",
 		Description = ""
 	)]
@@ -225,6 +243,18 @@ public sealed class TableCell
 	bool _isFontItalic;
 
 
+	[Display(GroupName = "セル", Name = "余白")]
+	[ShowPropertyEditorWhen(
+		nameof(StylePriority),
+		CellStylePriority.Override
+	)]
+	[AnimationSlider("F1", "", 0, 10)]
+	[DefaultValue(0.0)]
+	[Range(0, 100000)]
+	public Animation FontPadding { get; set; } =
+		new(0, 0, 100000);
+
+
 	/// <summary>
 	/// 行番号
 	/// 注意：1始まり
@@ -252,27 +282,9 @@ public sealed class TableCell
 		}
 	}
 
-	[Display(
-		GroupName = "セル",
-		Name = "テキストの配置",
-		Description = ""
-	)]
-	[ShowPropertyEditorWhen(
-		nameof(StylePriority),
-		CellStylePriority.Override
-	)]
-	[EnumComboBox]
-	public CellContentAlign TextAlign
-	{
-		get => _textAlign;
-		set
-		{
-			Set(ref _textAlign, value);
-		}
-	}
-	private CellContentAlign _textAlign =
-		CellContentAlign.MiddleCenter;
 
+
+	/*
 	[Display(
 		GroupName = "セル",
 		Name = "テキストエフェクト",
@@ -283,6 +295,7 @@ public sealed class TableCell
 		CellStylePriority.Override
 	)]
 	[VideoEffectSelector(IsEffectItem = false)]
+	*/
 	public ImmutableList<IVideoEffect> VideoEffect
 	{
 		get => _videoEffect;
@@ -297,7 +310,7 @@ public sealed class TableCell
 
 	protected override IEnumerable<IAnimatable> GetAnimatables()
 	{
-		return [FontSize];
+		return [FontSize, FontPadding];
 	}
 
 	public object Clone()
@@ -317,6 +330,7 @@ public sealed class TableCell
 			FontOutlineColor = FontOutlineColor,
 			StylePriority = StylePriority,
 			VideoEffect = VideoEffect,
+			FontPadding = FontPadding,
 			Text = Text,
 		};
 	}
@@ -344,6 +358,7 @@ public sealed class TableCell
 			&& TextStyle == other.TextStyle
 			&& StylePriority == other.StylePriority
 			&& FontOutlineColor == other.FontOutlineColor
+			&& FontPadding == other.FontPadding
 			&& string.Equals(
 				Text,
 				other.Text,
@@ -380,7 +395,8 @@ public sealed class TableCell
 				FontOutlineColor,
 				IsFontBold,
 				IsFontItalic,
-				StylePriority
+				StylePriority,
+				FontPadding
 			)
 		);
 	}

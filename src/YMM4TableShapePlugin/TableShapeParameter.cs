@@ -204,8 +204,8 @@ internal class TableShapeParameter : ShapeParameterBase
 	}
 	bool _isFontItalic;
 
-	[Display(GroupName = "共通セルスタイル", Name = "パディング")]
-	[AnimationSlider("F1", "", 1, 10)]
+	[Display(GroupName = "共通セルスタイル", Name = "余白")]
+	[AnimationSlider("F1", "", 0, 10)]
 	[DefaultValue(0.0)]
 	[Range(0, 100000)]
 	public Animation CellPadding { get; } =
