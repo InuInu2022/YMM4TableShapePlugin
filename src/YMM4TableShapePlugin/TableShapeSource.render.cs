@@ -15,6 +15,7 @@ using YukkuriMovieMaker.Commons;
 using YukkuriMovieMaker.Player.Video;
 using YukkuriMovieMaker.Plugin.Shape;
 using static YMM4TableShapePlugin.TableShapeSource;
+using System.Linq;
 
 namespace YMM4TableShapePlugin;
 
@@ -269,20 +270,21 @@ internal partial class TableShapeSource : IShapeSource2
 						ctx.Length,
 						ctx.Fps
 					);
-				var fontFamilyName = !string.IsNullOrEmpty(
-					fontFamily
-				)
-					? fontFamily
-					: DefaultFontName;
+				var fontFamilyNameRaw =
+					!string.IsNullOrEmpty(fontFamily)
+						? fontFamily
+						: DefaultFontName;
+				var (
+					fontFamilyName,
+					fontWeight,
+					fontStyle
+				) = ParseFontFamilyAndStyle(
+					fontFamilyNameRaw,
+					isFontBold,
+					isFontItalic
+				);
 				var fontSize =
 					fSize > 0f ? fSize : DefaultFontSize;
-				var fontStyle = isFontItalic
-					? FontStyle.Italic
-					: FontStyle.Normal;
-				var fontWeight = isFontBold
-					? FontWeight.Bold
-					: FontWeight.Normal;
-
 				var key = (
 					fontFamilyName,
 					fontSize,
@@ -343,12 +345,11 @@ internal partial class TableShapeSource : IShapeSource2
 						_ => ParagraphAlignment.Near,
 					};
 
-				var padding =
-					fontPadding.GetValue(
-						ctx.Frame,
-						ctx.Length,
-						ctx.Fps
-					);
+				var padding = fontPadding.GetValue(
+					ctx.Frame,
+					ctx.Length,
+					ctx.Fps
+				);
 				var textRect = CalcInnerRect(
 					cellRect,
 					(float)padding
@@ -604,5 +605,71 @@ internal partial class TableShapeSource : IShapeSource2
 				?? ctx.CellBackgroundBrush!,
 			(_, _, _) => ctx.CellBackgroundBrush!,
 		};
+	}
+
+	static (
+		string family,
+		FontWeight weight,
+		FontStyle style
+	) ParseFontFamilyAndStyle(
+		string fontFamilyName,
+		bool isBold,
+		bool isItalic
+	)
+	{
+		var family = fontFamilyName;
+		var weight = isBold ? FontWeight.Bold : FontWeight.Normal;
+		var style = isItalic ? FontStyle.Italic : FontStyle.Normal;
+
+		// FontWeightサフィックス対応表
+		var weightSuffixes = new Dictionary<string, FontWeight>(StringComparer.OrdinalIgnoreCase)
+		{
+			{ $" {nameof(FontWeight.ExtraBold)}", FontWeight.ExtraBold },
+			{ $" {nameof(FontWeight.UltraBold)}", FontWeight.UltraBold },
+			{ $" {nameof(FontWeight.Bold)}", FontWeight.Bold },
+			{ $" {nameof(FontWeight.SemiBold)}", FontWeight.SemiBold },
+			{ $" {nameof(FontWeight.DemiBold)}", FontWeight.DemiBold },
+			{ $" {nameof(FontWeight.Medium)}", FontWeight.Medium },
+			{ $" {nameof(FontWeight.Light)}", FontWeight.Light },
+			{ $" {nameof(FontWeight.ExtraLight)}", FontWeight.ExtraLight },
+			{ $" {nameof(FontWeight.UltraLight)}", FontWeight.UltraLight },
+			{ $" {nameof(FontWeight.Thin)}", FontWeight.Thin },
+			{ $" {nameof(FontWeight.Black)}", FontWeight.Black },
+			{ $" {nameof(FontWeight.Heavy)}", FontWeight.Heavy },
+			{ $" {nameof(FontWeight.UltraBlack)}", FontWeight.UltraBlack },
+			{ $" {nameof(FontWeight.Normal)}", FontWeight.Normal },
+			{ $" {nameof(FontWeight.Regular)}", FontWeight.Normal },
+			{ $" {nameof(FontWeight.SemiLight)}", FontWeight.SemiLight },
+			{ $" {nameof(FontWeight.ExtraBlack)}", FontWeight.ExtraBlack },
+		};
+
+		// FontStyleサフィックス対応表
+		var styleSuffixes = new Dictionary<string, FontStyle>(StringComparer.OrdinalIgnoreCase)
+		{
+			{ $" {nameof(FontStyle.Italic)}", FontStyle.Italic },
+			{ $" {nameof(FontStyle.Oblique)}", FontStyle.Oblique },
+		};
+
+		// 複数サフィックス対応: whileで繰り返し除去
+		var found = true;
+		while (found)
+		{
+			found = false;
+			foreach (var kv in weightSuffixes.Where(kv => family.EndsWith(kv.Key, StringComparison.OrdinalIgnoreCase)))
+			{
+				weight = kv.Value;
+				family = family[..^kv.Key.Length];
+				found = true;
+			}
+			foreach (var kv in styleSuffixes.Where(kv => family.EndsWith(kv.Key, StringComparison.OrdinalIgnoreCase)))
+			{
+				style = kv.Value;
+				family = family[..^kv.Key.Length];
+				found = true;
+			}
+		}
+
+		family = family.TrimEnd();
+		return (family, weight, style);
 	}
 }
