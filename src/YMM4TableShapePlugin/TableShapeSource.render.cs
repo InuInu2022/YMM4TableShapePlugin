@@ -5,9 +5,7 @@ using System.Numerics;
 using System.Reflection.Metadata;
 using System.Windows.Documents;
 using System.Windows.Media;
-
 using Epoxy;
-
 using Vortice.Direct2D1;
 using Vortice.DirectWrite;
 using Vortice.Mathematics;
@@ -99,10 +97,11 @@ internal partial class TableShapeSource : IShapeSource2
 		if (headerColumnBackgroundBrush is not null)
 			disposer.Collect(headerColumnBackgroundBrush);
 
-		using var dwFactory =
+		var dwFactory =
 			DWrite.DWriteCreateFactory<IDWriteFactory>(
 				Vortice.DirectWrite.FactoryType.Shared
 			);
+		disposer.Collect(dwFactory);
 
 		ctx.Target = commandList;
 		ctx.BeginDraw();
@@ -257,10 +256,7 @@ internal partial class TableShapeSource : IShapeSource2
 					textAlign,
 					isFontBold,
 					isFontItalic
-				) = GetEffectiveCellStyle(
-					cell,
-					Parameter
-				);
+				) = GetEffectiveCellStyle(cell, Parameter);
 
 				var fSize = (float)
 					fontSizeAnim.GetValue(
@@ -308,23 +304,22 @@ internal partial class TableShapeSource : IShapeSource2
 					disposer.Collect(textFormat);
 				}
 
-				textFormat.TextAlignment =
-					textAlign switch
-					{
-						CellContentAlign.TopLeft
-						or CellContentAlign.MiddleLeft
-						or CellContentAlign.BottomLeft =>
-							TextAlignment.Leading,
-						CellContentAlign.TopCenter
-						or CellContentAlign.MiddleCenter
-						or CellContentAlign.BottomCenter =>
-							TextAlignment.Center,
-						CellContentAlign.TopRight
-						or CellContentAlign.MiddleRight
-						or CellContentAlign.BottomRight =>
-							TextAlignment.Trailing,
-						_ => TextAlignment.Leading,
-					};
+				textFormat.TextAlignment = textAlign switch
+				{
+					CellContentAlign.TopLeft
+					or CellContentAlign.MiddleLeft
+					or CellContentAlign.BottomLeft =>
+						TextAlignment.Leading,
+					CellContentAlign.TopCenter
+					or CellContentAlign.MiddleCenter
+					or CellContentAlign.BottomCenter =>
+						TextAlignment.Center,
+					CellContentAlign.TopRight
+					or CellContentAlign.MiddleRight
+					or CellContentAlign.BottomRight =>
+						TextAlignment.Trailing,
+					_ => TextAlignment.Leading,
+				};
 				textFormat.ParagraphAlignment =
 					textAlign switch
 					{
@@ -343,26 +338,31 @@ internal partial class TableShapeSource : IShapeSource2
 						_ => ParagraphAlignment.Near,
 					};
 
-				var padding = 4f;
+				var padding =
+					Parameter.CellPadding.GetValue(
+						ctx.Frame,
+						ctx.Length,
+						ctx.Fps
+					);
 				var textRect = CalcInnerRect(
 					cellRect,
-					padding
+					(float)padding
 				);
 
 				if (
-					textStyle
-						== CellTextStyle.ShapedBorder
+					textStyle == CellTextStyle.ShapedBorder
 					|| textStyle
 						== CellTextStyle.RoundedBorder
 				)
 				{
-					using var textLayout =
+					var textLayout =
 						ctx.WriteFactory!.CreateTextLayout(
 							cell.Text,
 							textFormat,
 							textRect.Width,
 							textRect.Height
 						);
+					disposer.Collect(textLayout);
 
 					var outlineWidth = (float)
 						ctx.OuterBorderWidth;
@@ -378,16 +378,21 @@ internal partial class TableShapeSource : IShapeSource2
 					);
 					try
 					{
-						textLayout.Draw(
-							nint.Zero,
+						var renderer =
 							new Renderers.OutlineTextRenderer(
 								ctx.DeviceContext,
-								GetTextBrush(fontOutlineColor),
+								GetTextBrush(
+									fontOutlineColor
+								),
 								GetTextBrush(fontColor),
 								origin,
 								outlineWidth,
 								textStyle
-							),
+							);
+						disposer.Collect(renderer);
+						textLayout.Draw(
+							nint.Zero,
+							renderer,
 							0.0f,
 							0.0f
 						);
@@ -397,10 +402,7 @@ internal partial class TableShapeSource : IShapeSource2
 						ctx.DeviceContext.PopAxisAlignedClip();
 					}
 				}
-				else if (
-					textStyle
-					== CellTextStyle.Normal
-				)
+				else if (textStyle == CellTextStyle.Normal)
 				{
 					// 通常描画も同様にテキスト矩形でクリップ
 					ctx.DeviceContext.PushAxisAlignedClip(

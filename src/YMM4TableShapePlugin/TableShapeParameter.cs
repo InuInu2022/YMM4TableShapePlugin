@@ -204,6 +204,14 @@ internal class TableShapeParameter : ShapeParameterBase
 	}
 	bool _isFontItalic;
 
+	[Display(GroupName = "共通セルスタイル", Name = "パディング")]
+	[AnimationSlider("F1", "", 1, 10)]
+	[DefaultValue(0.0)]
+	[Range(0, 100000)]
+	public Animation CellPadding { get; } =
+		new(0, 0, 100000);
+
+	/*
 	[Display(
 		GroupName = "共通セルスタイル",
 		Name = "テキストエフェクト",
@@ -216,6 +224,7 @@ internal class TableShapeParameter : ShapeParameterBase
 		set => Set(ref _videoEffect, value);
 	}
 	ImmutableList<IVideoEffect> _videoEffect = [];
+	*/
 
 	#endregion common_cell_style
 
@@ -283,20 +292,20 @@ internal class TableShapeParameter : ShapeParameterBase
 		Name = "セルリストの表示",
 		Description = ""
 	)]
-	[ToggleSlider]
-	public bool IsShowCellList
+	[EnumComboBox]
+	public AdvancedDisplay IsShowCellList
 	{
 		get => _isShowCellList;
 		set { Set(ref _isShowCellList, value); }
 	}
-	bool _isShowCellList;
+	AdvancedDisplay _isShowCellList = AdvancedDisplay.None;
 
 	[Display(
 		GroupName = "高度な設定",
 		Name = "セルリスト",
 		AutoGenerateField = true
 	)]
-	[ShowPropertyEditorWhen(nameof(IsShowCellList), false)]
+	[ShowPropertyEditorWhen(nameof(IsShowCellList), AdvancedDisplay.Show)]
 	public ImmutableList<Models.TableCell> Cells =>
 		[.. TableModel.Cells.SelectMany(c => c)];
 
@@ -394,6 +403,7 @@ internal class TableShapeParameter : ShapeParameterBase
 			ColumnCount,
 			TableModel,
 			CellFontSize,
+			CellPadding,
 			.. Cells,
 			//.. TableModel.RowBoundaries,
 			//.. TableModel.ColumnBoundaries,

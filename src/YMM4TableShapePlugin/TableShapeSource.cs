@@ -341,6 +341,18 @@ internal partial class TableShapeSource : IShapeSource2
 		{
 			if (disposing)
 			{
+				foreach (var key in textFormatCache.Keys)
+				{
+					var b = textFormatCache[key];
+					disposer.RemoveAndDispose(ref b);
+				}
+				foreach (var key in textBrushCache.Keys)
+				{
+					var brush = textBrushCache[key];
+					disposer.RemoveAndDispose(ref brush);
+				}
+				textBrushCache.Clear();
+				textFormatCache.Clear();
 				disposer.DisposeAndClear();
 			}
 			//_rowBoundaries = [];

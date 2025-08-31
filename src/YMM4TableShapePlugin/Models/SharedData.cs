@@ -29,6 +29,7 @@ internal class SharedData
 	CellContentAlign CellTextAlign { get; }
 	bool IsCellFontBold { get; }
 	bool IsCellFontItalic { get; }
+	Animation CellPadding { get; } = new(0, 0, 100000);
 
 	ImmutableList<IVideoEffect> CellVideoEffect { get; }
 
@@ -64,7 +65,8 @@ internal class SharedData
 		CellTextAlign = parameter.CellTextAlign;
 		IsCellFontBold = parameter.IsCellFontBold;
 		IsCellFontItalic = parameter.IsCellFontItalic;
-		CellVideoEffect = parameter.CellVideoEffect;
+		CellPadding?.CopyFrom(parameter.CellPadding);
+		//CellVideoEffect = parameter.CellVideoEffect;
 
 		HeaderDisplay = parameter.HeaderDisplay;
 		HeaderRowBackgroundColor =
@@ -101,7 +103,8 @@ internal class SharedData
 		parameter.CellTextAlign = CellTextAlign;
 		parameter.IsCellFontBold = IsCellFontBold;
 		parameter.IsCellFontItalic = IsCellFontItalic;
-		parameter.CellVideoEffect = CellVideoEffect;
+		parameter.CellPadding?.CopyFrom(CellPadding);
+		//parameter.CellVideoEffect = CellVideoEffect;
 
 		parameter.HeaderDisplay = HeaderDisplay;
 		parameter.HeaderRowBackgroundColor =
