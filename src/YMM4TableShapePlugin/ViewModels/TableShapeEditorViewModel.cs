@@ -151,6 +151,7 @@ public class TableShapeEditorViewModel : IDisposable
 					OnCellPropertyChanged;
 				cell.PropertyChanging +=
 					OnCellPropertyChanging;
+				//TODO:Animation型プロパティはそれぞれにPropetyChanging設定必要
 			}
 		}
 	}
