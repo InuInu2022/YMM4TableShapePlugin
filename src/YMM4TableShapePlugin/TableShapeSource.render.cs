@@ -160,7 +160,8 @@ internal partial class TableShapeSource : IShapeSource2
 		Animation padding,
 		bool isFontBold,
 		bool isFontItalic,
-		Animation lineHeightRate
+		Animation lineHeightRate,
+		Animation outlineWidth
 	) GetEffectiveCellStyle(
 		Models.TableCell cell,
 		TableShapeParameter param
@@ -179,7 +180,8 @@ internal partial class TableShapeSource : IShapeSource2
 				param.CellPadding,
 				param.IsCellFontBold,
 				param.IsCellFontItalic,
-				param.CellLineHeightRate
+				param.CellLineHeightRate,
+				param.CellOuterBorderWidth
 			),
 			CellStylePriority.Override => (
 				cell.Font,
@@ -191,7 +193,8 @@ internal partial class TableShapeSource : IShapeSource2
 				cell.FontPadding,
 				cell.IsFontBold,
 				cell.IsFontItalic,
-				cell.FontLineHeightRate
+				cell.FontLineHeightRate,
+				cell.FontOuterBorderWidth
 			),
 			_ => (
 				param.CellFont,
@@ -203,7 +206,8 @@ internal partial class TableShapeSource : IShapeSource2
 				param.CellPadding,
 				param.IsCellFontBold,
 				param.IsCellFontItalic,
-				param.CellLineHeightRate
+				param.CellLineHeightRate,
+				param.CellOuterBorderWidth
 			),
 		};
 	}
@@ -266,7 +270,8 @@ internal partial class TableShapeSource : IShapeSource2
 					fontPadding,
 					isFontBold,
 					isFontItalic,
-					lineHeightRate
+					lineHeightRate,
+					outlineWidthAnim
 				) = GetEffectiveCellStyle(cell, Parameter);
 
 				var fSize = (float)
@@ -411,7 +416,11 @@ internal partial class TableShapeSource : IShapeSource2
 					}
 
 					var outlineWidth = (float)
-						ctx.OuterBorderWidth;
+						outlineWidthAnim.GetValue(
+							ctx.Frame,
+							ctx.Length,
+							ctx.Fps
+						);
 					var origin = new Vector2(
 						textRect.Left,
 						textRect.Top

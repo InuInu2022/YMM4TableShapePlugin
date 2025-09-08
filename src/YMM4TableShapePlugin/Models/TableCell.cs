@@ -242,18 +242,6 @@ public sealed class TableCell
 	}
 	bool _isFontItalic;
 
-
-	[Display(GroupName = "セル", Name = "余白")]
-	[ShowPropertyEditorWhen(
-		nameof(StylePriority),
-		CellStylePriority.Override
-	)]
-	[AnimationSlider("F1", "", 0, 10)]
-	[DefaultValue(0.0)]
-	[Range(0, 100000)]
-	public Animation FontPadding { get; set; } =
-		new(0, 0, 100000);
-
 	[Display(
 		GroupName = "セル",
 		Name = "行の高さ",
@@ -268,6 +256,33 @@ public sealed class TableCell
 	[Range(50, 500)]
 	public Animation FontLineHeightRate { get; set; } =
 		new Animation(100.0, 50.0, 500.0);
+
+	[Display(GroupName = "セル", Name = "余白")]
+	[ShowPropertyEditorWhen(
+		nameof(StylePriority),
+		CellStylePriority.Override
+	)]
+	[AnimationSlider("F1", "", 0, 10)]
+	[DefaultValue(0.0)]
+	[Range(0, 100000)]
+	public Animation FontPadding { get; set; } =
+		new(0, 0, 100000);
+
+	[Display(
+		GroupName = "セル",
+		Name = "文字枠太さ",
+		Description = "フォントの枠線の太さ。0にすると消えます。"
+	)]
+	[ShowPropertyEditorWhen(
+		nameof(TextStyle),
+		CellTextStyle.ShapedBorder
+			| CellTextStyle.RoundedBorder
+	)]
+	[AnimationSlider("F0", "", 0, 10)]
+	[DefaultValue(1)]
+	[Range(0, 100000)]
+	public Animation FontOuterBorderWidth { get; } =
+		new(0, 0, 100000);
 
 
 	/// <summary>

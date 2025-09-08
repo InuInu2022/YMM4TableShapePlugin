@@ -222,6 +222,21 @@ internal class TableShapeParameter : ShapeParameterBase
 	public Animation CellPadding { get; } =
 		new(0, 0, 100000);
 
+	[Display(
+		GroupName = "共通セルスタイル",
+		Name = "文字枠太さ",
+		Description = "フォントの枠線の太さ。0にすると消えます。"
+	)]
+	[ShowPropertyEditorWhen(
+		nameof(CellTextStyle),
+		CellTextStyle.ShapedBorder | CellTextStyle.RoundedBorder
+	)]
+	[AnimationSlider("F0", "", 0, 10)]
+	[DefaultValue(1)]
+	[Range(0, 100000)]
+	public Animation CellOuterBorderWidth { get; } =
+		new(0, 0, 100000);
+
 	/*
 	[Display(
 		GroupName = "共通セルスタイル",
