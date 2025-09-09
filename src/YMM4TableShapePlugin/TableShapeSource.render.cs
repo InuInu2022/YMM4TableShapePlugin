@@ -385,28 +385,20 @@ internal partial class TableShapeSource : IShapeSource2
 
 				if (
 					textStyle == CellTextStyle.ShapedBorder
-					|| textStyle
-						== CellTextStyle.RoundedBorder
+					|| textStyle == CellTextStyle.RoundedBorder
 				)
 				{
 					// 余分な高さ分を補正（中央揃え時のみ、1行は補正しない）
 					if (
-						textFormat.ParagraphAlignment
-							== ParagraphAlignment.Center
+						textFormat.ParagraphAlignment == ParagraphAlignment.Center
 						&& actualLineCount > 1
 					)
 					{
-						var totalTextHeight =
-							actualLineCount
-							* actualLineSpacing;
-						var cellCenterY =
-							textRect.Top
-							+ textRect.Height / 2;
-						var newTop =
-							cellCenterY
-							- totalTextHeight / 2;
-						var newBottom =
-							newTop + totalTextHeight;
+						var metrics = textLayout.Metrics;
+						var totalTextHeight = metrics.Height;
+						var cellCenterY = textRect.Top + textRect.Height / 2;
+						var newTop = cellCenterY - totalTextHeight / 2;
+						var newBottom = newTop + totalTextHeight;
 						textRect = new Rect(
 							textRect.Left,
 							newTop,
