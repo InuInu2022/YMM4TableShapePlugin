@@ -5,6 +5,10 @@
     <UseWPF>true</UseWPF>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <AssemblyName>YMM4TableShapePlugin</AssemblyName>
+
+    <!-- 依存関係を確実に出力フォルダにコピー -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="$(YMM4_PATH)\YukkuriMovieMaker.Controls.dll">
@@ -42,7 +46,16 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Epoxy.Wpf" Version="1.16.0" />
+    <PackageReference Include="Epoxy.Wpf" Version="1.16.0">
+      <Private>true</Private>
+      <CopyLocal>true</CopyLocal>
+      <IncludeAssets>compile;runtime;build</IncludeAssets>
+      <GeneratePathProperty>true</GeneratePathProperty>
+    </PackageReference>
+    <PackageReference Include="ILRepack.Lib.MSBuild.Task" Version="2.0.43">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
   </ItemGroup>
   <ItemGroup Condition="'$(DesignTimeBuild)'=='true'">
     <Compile Include="$(IntermediateOutputPath)**\*.g.cs" />

@@ -93,6 +93,9 @@
       <FilesToDelete Include="$(OutputPath)\publish\runtimes\win\lib\**\System.Management.dll" />
       <FilesToDelete Include="$(OutputPath)\publish\YukkuriMovieMaker.*.dll" />
       <FilesToDelete Include="$(OutputPath)\publish\YukkuriMovieMaker.*.pdb" />
+
+      <FilesToDelete Include="$(OutputPath)\publish\YukkuriMovieMaker.Epoxy.dll" />
+      <FilesToDelete Include="$(OutputPath)\publish\YukkuriMovieMaker.Epoxy.Core.dll" />
     </ItemGroup>
     <Delete Files="@(FilesToDelete)">
       <Output TaskParameter="DeletedFiles" ItemName="FilesDeleted" />
