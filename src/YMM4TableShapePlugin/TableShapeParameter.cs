@@ -435,6 +435,7 @@ internal class TableShapeParameter : ShapeParameterBase
 			CellFontSize,
 			CellPadding,
 			CellLineHeightRate,
+			CellOuterBorderWidth,
 			.. Cells,
 			//.. TableModel.RowBoundaries,
 			//.. TableModel.ColumnBoundaries,

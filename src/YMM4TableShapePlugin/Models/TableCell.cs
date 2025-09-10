@@ -281,7 +281,7 @@ public sealed class TableCell
 	[AnimationSlider("F0", "", 0, 10)]
 	[DefaultValue(1)]
 	[Range(0, 100000)]
-	public Animation FontOuterBorderWidth { get; } =
+	public Animation FontOuterBorderWidth { get; set; } =
 		new(0, 0, 100000);
 
 
@@ -340,7 +340,12 @@ public sealed class TableCell
 
 	protected override IEnumerable<IAnimatable> GetAnimatables()
 	{
-		return [FontSize, FontPadding, FontLineHeightRate];
+		return [
+			FontSize,
+			FontPadding,
+			FontLineHeightRate,
+			FontOuterBorderWidth
+		];
 	}
 
 	public object Clone()
@@ -362,6 +367,7 @@ public sealed class TableCell
 			VideoEffect = VideoEffect,
 			FontPadding = FontPadding,
 			FontLineHeightRate = FontLineHeightRate,
+			FontOuterBorderWidth = FontOuterBorderWidth,
 			Text = Text,
 		};
 	}
@@ -391,6 +397,7 @@ public sealed class TableCell
 			&& FontOutlineColor == other.FontOutlineColor
 			&& FontPadding == other.FontPadding
 			&& FontLineHeightRate == other.FontLineHeightRate
+			&& FontOuterBorderWidth == other.FontOuterBorderWidth
 			&& string.Equals(
 				Text,
 				other.Text,
@@ -429,7 +436,8 @@ public sealed class TableCell
 				IsFontItalic,
 				StylePriority,
 				FontPadding,
-				FontLineHeightRate
+				FontLineHeightRate,
+				FontOuterBorderWidth
 			)
 		);
 	}

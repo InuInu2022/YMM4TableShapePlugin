@@ -30,8 +30,9 @@ internal class SharedData
 	bool IsCellFontBold { get; }
 	bool IsCellFontItalic { get; }
 	Animation CellPadding { get; } = new(0, 0, 100000);
+	Animation CellOuterBorderWidth { get; } = new(0, 0, 100000);
 
-	ImmutableList<IVideoEffect> CellVideoEffect { get; }
+	//ImmutableList<IVideoEffect>? CellVideoEffect { get; }
 
 	TableModel TableModel { get; }
 	ShowHeader HeaderDisplay { get; }
@@ -66,6 +67,9 @@ internal class SharedData
 		IsCellFontBold = parameter.IsCellFontBold;
 		IsCellFontItalic = parameter.IsCellFontItalic;
 		CellPadding?.CopyFrom(parameter.CellPadding);
+		CellOuterBorderWidth?.CopyFrom(
+			parameter.CellOuterBorderWidth
+		);
 		//CellVideoEffect = parameter.CellVideoEffect;
 
 		HeaderDisplay = parameter.HeaderDisplay;
@@ -104,6 +108,9 @@ internal class SharedData
 		parameter.IsCellFontBold = IsCellFontBold;
 		parameter.IsCellFontItalic = IsCellFontItalic;
 		parameter.CellPadding?.CopyFrom(CellPadding);
+		parameter.CellOuterBorderWidth?.CopyFrom(
+			CellOuterBorderWidth
+		);
 		//parameter.CellVideoEffect = CellVideoEffect;
 
 		parameter.HeaderDisplay = HeaderDisplay;
