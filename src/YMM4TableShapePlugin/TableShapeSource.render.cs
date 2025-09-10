@@ -389,6 +389,8 @@ internal partial class TableShapeSource : IShapeSource2
 				)
 				{
 					// 余分な高さ分を補正（中央揃え時のみ、1行は補正しない）
+					// ↓この補正を削除
+					/*
 					if (
 						textFormat.ParagraphAlignment == ParagraphAlignment.Center
 						&& actualLineCount > 1
@@ -406,70 +408,70 @@ internal partial class TableShapeSource : IShapeSource2
 							newBottom
 						);
 					}
+				 */
+                    var outlineWidth = (float)
+                        outlineWidthAnim.GetValue(
+                            ctx.Frame,
+                            ctx.Length,
+                            ctx.Fps
+                        );
+                    var origin = new Vector2(
+                        textRect.Left,
+                        textRect.Top
+                    );
 
-					var outlineWidth = (float)
-						outlineWidthAnim.GetValue(
-							ctx.Frame,
-							ctx.Length,
-							ctx.Fps
-						);
-					var origin = new Vector2(
-						textRect.Left,
-						textRect.Top
-					);
-
-					// テキスト領域でクリッピングして描画（領域をはみ出す文字を切る）
-					ctx.DeviceContext.PushAxisAlignedClip(
-						cellRect,
-						AntialiasMode.Aliased
-					);
-					try
-					{
-						var renderer =
-							new Renderers.OutlineTextRenderer(
-								ctx.DeviceContext,
-								GetTextBrush(
-									fontOutlineColor
-								),
-								GetTextBrush(fontColor),
-								origin,
-								outlineWidth,
-								textStyle
-							);
-						disposer.Collect(renderer);
-						textLayout.Draw(
-							nint.Zero,
-							renderer,
-							0.0f,
-							0.0f
-						);
-					}
-					finally
-					{
-						ctx.DeviceContext.PopAxisAlignedClip();
-					}
-				}
-				else if (textStyle == CellTextStyle.Normal)
-				{
-					// 通常描画も同様にテキスト矩形でクリップ
-					ctx.DeviceContext.PushAxisAlignedClip(
-						cellRect,
-						AntialiasMode.Aliased
-					);
-					try
-					{
-						ctx.DeviceContext.DrawText(
+                    // テキスト領域でクリッピングして描画（領域をはみ出す文字を切る）
+                    ctx.DeviceContext.PushAxisAlignedClip(
+                        cellRect,
+                        AntialiasMode.Aliased
+                    );
+                    try
+                    {
+                        var renderer =
+                            new Renderers.OutlineTextRenderer(
+                                ctx.DeviceContext,
+                                GetTextBrush(
+                                    fontOutlineColor
+                                ),
+                                GetTextBrush(fontColor),
+                                origin,
+                                outlineWidth,
+                                textStyle
+                            );
+                        disposer.Collect(renderer);
+                        textLayout.Draw(
+                            nint.Zero,
+                            renderer,
+                            0.0f,
+                            0.0f
+                        );
+                    }
+                    finally
+                    {
+                        ctx.DeviceContext.PopAxisAlignedClip();
+                    }
+                }
+                else if (textStyle == CellTextStyle.Normal)
+                {
+                    // 通常描画も同様にテキスト矩形でクリップ
+                    ctx.DeviceContext.PushAxisAlignedClip(
+                        cellRect,
+                        AntialiasMode.Aliased
+                    );
+                    try
+                    {
+                        ctx.DeviceContext.DrawText(
 							cell.Text,
 							textFormat,
 							textRect,
 							GetTextBrush(fontColor)
 						);
-					}
-					finally
-					{
-						ctx.DeviceContext.PopAxisAlignedClip();
-					}
-				}
+                    }
+                    finally
+                    {
+                        ctx.DeviceContext.PopAxisAlignedClip();
+                    }
+                }
 			}
 		}
 	}
