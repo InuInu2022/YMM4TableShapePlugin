@@ -39,6 +39,66 @@ internal partial class TableShapeSource : IShapeSource2
 		ID2D1SolidColorBrush
 	> textBrushCache = [];
 
+	/// <summary>
+	/// Fontキャッシュ用フィールド
+	/// </summary>
+	static readonly Dictionary<
+		(
+			string fontFamily,
+			FontStyle fontStyle,
+			FontWeight fontWeight
+		),
+		IDWriteFont
+	> FontStyleCache = [];
+
+	static readonly Dictionary<string, FontWeight> FontWeightSuffixes = new(
+		StringComparer.OrdinalIgnoreCase
+	)
+	{
+		{ " ExtraBold", FontWeight.ExtraBold },
+		{ " UltraBold", FontWeight.UltraBold },
+		{ " Bold", FontWeight.Bold },
+		{ " SemiBold", FontWeight.SemiBold },
+		{ " DemiBold", FontWeight.DemiBold },
+		{ " Medium", FontWeight.Medium },
+		{ " Light", FontWeight.Light },
+		{ " ExtraLight", FontWeight.ExtraLight },
+		{ " UltraLight", FontWeight.UltraLight },
+		{ " Thin", FontWeight.Thin },
+		{ " Black", FontWeight.Black },
+		{ " Heavy", FontWeight.Heavy },
+		{ " UltraBlack", FontWeight.UltraBlack },
+		{ " Normal", FontWeight.Normal },
+		{ " Regular", FontWeight.Normal },
+		{ " SemiLight", FontWeight.SemiLight },
+		{ " ExtraBlack", FontWeight.ExtraBlack },
+		{ " 太", FontWeight.Bold },
+		{ " 標準", FontWeight.Medium },
+		{ " 細", FontWeight.Light },
+		{ " 極細", FontWeight.ExtraLight },
+		{ "-Light", FontWeight.Light },
+		{ "-Thin", FontWeight.Thin },
+		{ "-Black", FontWeight.Black },
+		{ "-Bold", FontWeight.Bold },
+		{ "-Heavy", FontWeight.Heavy },
+		{ "-Medium", FontWeight.Medium },
+		{ "-Regular", FontWeight.Normal },
+		{ "-Normal", FontWeight.Normal },
+		{ "-SemiBold", FontWeight.SemiBold },
+		{ "-DemiBold", FontWeight.DemiBold },
+		{ "-ExtraBold", FontWeight.ExtraBold },
+		{ "-UltraBold", FontWeight.UltraBold },
+		{ "-UltraBlack", FontWeight.UltraBlack },
+		{ "-ExtraLight", FontWeight.ExtraLight },
+		{ "-UltraLight", FontWeight.UltraLight },
+	};
+
+	static readonly Dictionary<string, FontStyle> FontStyleSuffixes = new(StringComparer.OrdinalIgnoreCase)
+	{
+		{ " Italic", FontStyle.Italic },
+		{ " Oblique", FontStyle.Oblique },
+	};
+
 	[MemberNotNull(nameof(cachedBorderBrush))]
 	[MemberNotNull(nameof(cachedOuterBorderBrush))]
 	[MemberNotNull(nameof(cachedCellBgBrush))]

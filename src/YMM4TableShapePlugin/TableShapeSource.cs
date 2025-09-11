@@ -351,13 +351,17 @@ internal partial class TableShapeSource : IShapeSource2
 					var brush = textBrushCache[key];
 					disposer.RemoveAndDispose(ref brush);
 				}
+				foreach (var item in FontStyleCache.Keys)
+				{
+					var font = FontStyleCache[item];
+					disposer.RemoveAndDispose(ref font);
+				}
 				textBrushCache.Clear();
 				textFormatCache.Clear();
+				FontStyleCache.Clear();
 				disposer.DisposeAndClear();
 			}
-			//_rowBoundaries = [];
-			//_columnBoundaries = [];
-			//_tableModel = null;
+
 			_disposedValue = true;
 		}
 	}

@@ -653,7 +653,8 @@ internal partial class TableShapeSource : IShapeSource2
 		};
 	}
 
-	static (
+	[SuppressMessage("Usage", "SMA0040:Missing Using Statement", Justification = "<保留中>")]
+	(
 		string family,
 		FontWeight weight,
 		FontStyle style
@@ -671,132 +672,106 @@ internal partial class TableShapeSource : IShapeSource2
 			? FontStyle.Italic
 			: FontStyle.Normal;
 
-		// FontWeightサフィックス対応表
-		var weightSuffixes = new Dictionary<
-			string,
-			FontWeight
-		>(StringComparer.OrdinalIgnoreCase)
+		// キャッシュにあればそれを返す
+		if (FontStyleCache.TryGetValue(
+			(family, style, weight),
+			out var cachedFont
+		))
 		{
-			{
-				$" {nameof(FontWeight.ExtraBold)}",
-				FontWeight.ExtraBold
-			},
-			{
-				$" {nameof(FontWeight.UltraBold)}",
-				FontWeight.UltraBold
-			},
-			{
-				$" {nameof(FontWeight.Bold)}",
-				FontWeight.Bold
-			},
-			{
-				$" {nameof(FontWeight.SemiBold)}",
-				FontWeight.SemiBold
-			},
-			{
-				$" {nameof(FontWeight.DemiBold)}",
-				FontWeight.DemiBold
-			},
-			{
-				$" {nameof(FontWeight.Medium)}",
-				FontWeight.Medium
-			},
-			{
-				$" {nameof(FontWeight.Light)}",
-				FontWeight.Light
-			},
-			{
-				$" {nameof(FontWeight.ExtraLight)}",
-				FontWeight.ExtraLight
-			},
-			{
-				$" {nameof(FontWeight.UltraLight)}",
-				FontWeight.UltraLight
-			},
-			{
-				$" {nameof(FontWeight.Thin)}",
-				FontWeight.Thin
-			},
-			{
-				$" {nameof(FontWeight.Black)}",
-				FontWeight.Black
-			},
-			{
-				$" {nameof(FontWeight.Heavy)}",
-				FontWeight.Heavy
-			},
-			{
-				$" {nameof(FontWeight.UltraBlack)}",
-				FontWeight.UltraBlack
-			},
-			{
-				$" {nameof(FontWeight.Normal)}",
-				FontWeight.Normal
-			},
-			{
-				$" {nameof(FontWeight.Regular)}",
-				FontWeight.Normal
-			},
-			{
-				$" {nameof(FontWeight.SemiLight)}",
-				FontWeight.SemiLight
-			},
-			{
-				$" {nameof(FontWeight.ExtraBlack)}",
-				FontWeight.ExtraBlack
-			},
-		};
+			return (family, cachedFont.Weight, cachedFont.Style);
 
-		// FontStyleサフィックス対応表
-		var styleSuffixes = new Dictionary<
-			string,
-			FontStyle
-		>(StringComparer.OrdinalIgnoreCase)
-		{
-			{
-				$" {nameof(FontStyle.Italic)}",
-				FontStyle.Italic
-			},
-			{
-				$" {nameof(FontStyle.Oblique)}",
-				FontStyle.Oblique
-			},
-		};
-
-		// 複数サフィックス対応: whileで繰り返し除去
-		var found = true;
-		while (found)
-		{
-			found = false;
-			foreach (
-				var kv in weightSuffixes.Where(kv =>
-					family.EndsWith(
-						kv.Key,
-						StringComparison.OrdinalIgnoreCase
-					)
-				)
-			)
-			{
-				weight = kv.Value;
-				family = family[..^kv.Key.Length];
-				found = true;
-			}
-			foreach (
-				var kv in styleSuffixes.Where(kv =>
-					family.EndsWith(
-						kv.Key,
-						StringComparison.OrdinalIgnoreCase
-					)
-				)
-			)
-			{
-				style = kv.Value;
-				family = family[..^kv.Key.Length];
-				found = true;
-			}
 		}
 
-		family = family.TrimEnd();
+		using var factory =
+			DWrite.DWriteCreateFactory<IDWriteFactory1>();
+		using var fontCollection =
+			factory.GetSystemFontCollection(false);
+
+		bool exists = fontCollection.FindFamilyName(
+			family,
+			out var index
+		);
+		if (!exists)
+		{
+			// 存在しなければ「Bold」「Italic」などを取り除いて再検索
+
+			var isFound = true;
+			while (isFound)
+			{
+				isFound = false;
+				var endingWeightSuffixes =
+					FontWeightSuffixes.Where(kv =>
+						family.EndsWith(
+							kv.Key,
+							StringComparison.OrdinalIgnoreCase
+						)
+					);
+				foreach (var kv in endingWeightSuffixes)
+				{
+					// 除去後にファミリ名が空にならない場合のみ除去
+					var trimmed = family[..^kv.Key.Length];
+					if (!string.IsNullOrWhiteSpace(trimmed))
+					{
+						weight = kv.Value;
+						family = trimmed;
+						isFound = true;
+						break;
+					}
+				}
+
+				var matchingStyleSuffixes =
+					FontStyleSuffixes.Where(kv =>
+						family.EndsWith(
+							kv.Key,
+							StringComparison.OrdinalIgnoreCase
+						)
+					);
+				foreach (var kv in matchingStyleSuffixes)
+				{
+					var trimmed = family[..^kv.Key.Length];
+					if (!string.IsNullOrWhiteSpace(trimmed))
+					{
+						style = kv.Value;
+						family = trimmed;
+						isFound = true;
+						break;
+					}
+				}
+			}
+
+
+			family = family.Replace('－', '-'); // 全角ハイフン→半角
+			family = family.Replace('–', '-'); // エンダッシュ→ハイフン
+			family = family.TrimEnd();
+			exists = fontCollection.FindFamilyName(
+				family,
+				out index
+			);
+		}
+
+		if (exists)
+		{
+			using var existingFamily =
+				fontCollection.GetFontFamily(index);
+			var font = existingFamily.GetFirstMatchingFont(
+				weight,
+				FontStretch.Normal,
+				style
+			);
+			disposer.Collect(font);
+			Debug.WriteLine(
+				$"Parsed font family: {family}, {font.Weight}, {font.Style}"
+			);
+			FontStyleCache[(family, font.Style, font.Weight)] = font;
+			return (
+				family,
+				font.Weight,
+				font.Style
+			);
+		}
+
+
+		Debug.WriteLine($"Parsed font family: {family}, {weight}, {style}");
 		return (family, weight, style);
 	}
 }
