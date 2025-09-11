@@ -1,3 +1,7 @@
+<p align="center">
+<img src="./docs/thumb_tableshape.png" alt="サムネイル" width="400">
+</p>
+
 # 🟦 YMM4 表テーブルプラグイン
 
 ![GitHub License](https://img.shields.io/github/license/InuInu2022/YMM4TableShapePlugin) <img src="https://img.shields.io/badge/.NET-9.0+-4FC08D.svg?logo=dotnet&style=popout">
