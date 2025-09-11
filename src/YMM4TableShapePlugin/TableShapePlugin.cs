@@ -5,7 +5,7 @@ using YukkuriMovieMaker.Project;
 
 namespace YMM4TableShapePlugin;
 
-[PluginDetails(AuthorName = "InuInu", ContentId = "")]
+[PluginDetails(AuthorName = "InuInu", ContentId = "nc432744")]
 internal class TableShapePlugin : IShapePlugin
 {
 	public string Name => "表テーブル";
