@@ -309,7 +309,7 @@ internal partial class TableShapeSource : IShapeSource2
 					fontStyle,
 					fontWeight,
 					lineRate,
-					LineSpacingMethod.Default // 仮でDefault、後で切り替え
+					LineSpacingMethod.Uniform // ここでUniformを指定
 				);
 
 				// textFormatキャッシュ取得
@@ -348,110 +348,62 @@ internal partial class TableShapeSource : IShapeSource2
 						TextAlignment.Trailing,
 					_ => TextAlignment.Leading,
 				};
-				textFormat.ParagraphAlignment =
-					textAlign switch
-					{
-						CellContentAlign.TopLeft
-						or CellContentAlign.TopCenter
-						or CellContentAlign.TopRight =>
-							ParagraphAlignment.Near,
-						CellContentAlign.MiddleLeft
-						or CellContentAlign.MiddleCenter
-						or CellContentAlign.MiddleRight =>
-							ParagraphAlignment.Center,
-						CellContentAlign.BottomLeft
-						or CellContentAlign.BottomCenter
-						or CellContentAlign.BottomRight =>
-							ParagraphAlignment.Far,
-						_ => ParagraphAlignment.Near,
-					};
+				// ParagraphAlignmentは常にNearに設定
+				textFormat.ParagraphAlignment = ParagraphAlignment.Near;
 
-				var padding = fontPadding.GetValue(
-					ctx.Frame,
-					ctx.Length,
-					ctx.Fps
-				);
-				var textRect = CalcInnerRect(
-					cellRect,
-					(float)padding
-				);
+				// --- パディング反映したテキスト描画領域を計算 ---
+				var padding = fontPadding.GetValue(ctx.Frame, ctx.Length, ctx.Fps);
+				var textRect = CalcInnerRect(cellRect, (float)padding);
 
-				//行間スペース
-				var textLayout = CreateTextLayout(
-					ctx,
-					cell,
-					textFormat,
-					textRect
-				);
+				// --- textLayout生成 ---
+				var textLayout = CreateTextLayout(ctx, cell, textFormat, textRect);
 
-				if (
-					textStyle == CellTextStyle.ShapedBorder
-					|| textStyle
-						== CellTextStyle.RoundedBorder
-				)
+				// 行間率反映
+				textLayout.SetLineSpacing(LineSpacingMethod.Uniform, fontSize * (float)lineRate / 100f, fontSize);
+
+				// --- originY計算 ---
+				var originY = textRect.Top;
+				switch (textAlign)
 				{
-					var outlineWidth = (float)
-						outlineWidthAnim.GetValue(
-							ctx.Frame,
-							ctx.Length,
-							ctx.Fps
-						);
-					var origin = new Vector2(
-						textRect.Left,
-						textRect.Top
-					);
+					case CellContentAlign.MiddleLeft:
+					case CellContentAlign.MiddleCenter:
+					case CellContentAlign.MiddleRight:
+						originY = textRect.Top + (textRect.Height - textLayout.Metrics.Height) / 2f;
+						break;
+					case CellContentAlign.BottomLeft:
+					case CellContentAlign.BottomCenter:
+					case CellContentAlign.BottomRight:
+						originY = textRect.Top + textRect.Height - textLayout.Metrics.Height;
+						break;
+					// Top系はそのまま
+				}
+				var origin = new Vector2(textRect.Left, originY);
 
-					// テキスト領域でクリッピングして描画（領域をはみ出す文字を切る）
-					ctx.DeviceContext.PushAxisAlignedClip(
-						cellRect,
-						AntialiasMode.Aliased
-					);
-					try
+				ctx.DeviceContext.PushAxisAlignedClip(cellRect, AntialiasMode.Aliased);
+				try
+				{
+					if (textStyle == CellTextStyle.ShapedBorder || textStyle == CellTextStyle.RoundedBorder)
 					{
-						var renderer =
-							new Renderers.OutlineTextRenderer(
-								ctx.DeviceContext,
-								GetTextBrush(
-									fontOutlineColor
-								),
-								GetTextBrush(fontColor),
-								origin,
-								outlineWidth,
-								textStyle
-							);
-						disposer.Collect(renderer);
-						textLayout.Draw(
-							nint.Zero,
-							renderer,
-							0.0f,
-							0.0f
+						var outlineWidth = (float)outlineWidthAnim.GetValue(ctx.Frame, ctx.Length, ctx.Fps);
+						var renderer = new Renderers.OutlineTextRenderer(
+							ctx.DeviceContext,
+							GetTextBrush(fontOutlineColor),
+							GetTextBrush(fontColor),
+							origin,
+							outlineWidth,
+							textStyle
 						);
+						disposer.Collect(renderer);
+						textLayout.Draw(nint.Zero, renderer, 0.0f, 0.0f);
 					}
-					finally
+					else if (textStyle == CellTextStyle.Normal)
 					{
-						ctx.DeviceContext.PopAxisAlignedClip();
+						ctx.DeviceContext.DrawTextLayout(origin, textLayout, GetTextBrush(fontColor));
 					}
 				}
-				else if (textStyle == CellTextStyle.Normal)
+				finally
 				{
-					// 通常描画も同様にテキスト矩形でクリップ
-					ctx.DeviceContext.PushAxisAlignedClip(
-						cellRect,
-						AntialiasMode.Aliased
-					);
-					try
-					{
-						ctx.DeviceContext.DrawText(
-							cell.Text,
-							textFormat,
-							textRect,
-							GetTextBrush(fontColor)
-						);
-					}
-					finally
-					{
-						ctx.DeviceContext.PopAxisAlignedClip();
-					}
+					ctx.DeviceContext.PopAxisAlignedClip();
 				}
 			}
 		}
@@ -653,7 +605,11 @@ internal partial class TableShapeSource : IShapeSource2
 		};
 	}
 
-	[SuppressMessage("Usage", "SMA0040:Missing Using Statement", Justification = "<保留中>")]
+	[SuppressMessage(
+		"Usage",
+		"SMA0040:Missing Using Statement",
+		Justification = "<保留中>"
+	)]
 	(
 		string family,
 		FontWeight weight,
@@ -673,13 +629,18 @@ internal partial class TableShapeSource : IShapeSource2
 			: FontStyle.Normal;
 
 		// キャッシュにあればそれを返す
-		if (FontStyleCache.TryGetValue(
-			(family, style, weight),
-			out var cachedFont
-		))
+		if (
+			FontStyleCache.TryGetValue(
+				(family, style, weight),
+				out var cachedFont
+			)
+		)
 		{
-			return (family, cachedFont.Weight, cachedFont.Style);
-
+			return (
+				family,
+				cachedFont.Weight,
+				cachedFont.Style
+			);
 		}
 
 		using var factory =
@@ -739,7 +700,6 @@ internal partial class TableShapeSource : IShapeSource2
 				}
 			}
 
-
 			family = family.Replace('－', '-'); // 全角ハイフン→半角
 			family = family.Replace('–', '-'); // エンダッシュ→ハイフン
 			family = family.TrimEnd();
@@ -762,16 +722,15 @@ internal partial class TableShapeSource : IShapeSource2
 			Debug.WriteLine(
 				$"Parsed font family: {family}, {font.Weight}, {font.Style}"
 			);
-			FontStyleCache[(family, font.Style, font.Weight)] = font;
-			return (
-				family,
-				font.Weight,
-				font.Style
-			);
+			FontStyleCache[
+				(family, font.Style, font.Weight)
+			] = font;
+			return (family, font.Weight, font.Style);
 		}
 
-
-		Debug.WriteLine($"Parsed font family: {family}, {weight}, {style}");
+		Debug.WriteLine(
+			$"Parsed font family: {family}, {weight}, {style}"
+		);
 		return (family, weight, style);
 	}
 }
