@@ -1,19 +1,9 @@
-using System.Collections.Immutable;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Numerics;
-using System.Reflection.Metadata;
-using System.Windows.Documents;
-using System.Windows.Media;
+
 using Vortice.Direct2D1;
 using Vortice.DirectWrite;
-using Vortice.Mathematics;
-using YMM4TableShapePlugin.Enums;
-using YMM4TableShapePlugin.Models;
-using YukkuriMovieMaker.Commons;
+
 using YukkuriMovieMaker.Player.Video;
-using YukkuriMovieMaker.Plugin.Shape;
-using static YMM4TableShapePlugin.TableShapeSource;
 
 namespace YMM4TableShapePlugin;
 
@@ -39,7 +29,7 @@ internal partial class TableShapeSource : IShapeSource2
 			LineSpacingMethod lineSpacingMethod
 		),
 		IDWriteTextFormat
-	> textFormatCache = new();
+	> textFormatCache = [];
 
 	/// <summary>
 	/// TextBrushキャッシュ用フィールド
@@ -47,7 +37,7 @@ internal partial class TableShapeSource : IShapeSource2
 	readonly Dictionary<
 		(byte R, byte G, byte B, byte A),
 		ID2D1SolidColorBrush
-	> textBrushCache = new();
+	> textBrushCache = [];
 
 	[MemberNotNull(nameof(cachedBorderBrush))]
 	[MemberNotNull(nameof(cachedOuterBorderBrush))]
