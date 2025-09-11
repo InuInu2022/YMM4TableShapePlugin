@@ -13,6 +13,8 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using Epoxy;
+
+using YMM4TableShapePlugin.Enums;
 using YMM4TableShapePlugin.Models;
 using YMM4TableShapePlugin.View;
 using YukkuriMovieMaker.Commons;
@@ -339,6 +341,32 @@ public class TableShapeEditorViewModel : IDisposable
 		PropertyChangedEventArgs e
 	)
 	{
+		if (sender is not TableCell cell) return;
+
+		// StylePriorityがOverrideに切り替わった瞬間に共通スタイルをコピー
+		if (string.Equals(
+				e.PropertyName,
+				nameof(TableCell.StylePriority),
+				StringComparison.Ordinal)
+			&& cell.StylePriority == CellStylePriority.Override
+			&& _parameter is TableShapeParameter param
+		)
+		{
+			// 共通スタイル値をセルにコピー
+			cell.Font = param.CellFont;
+			cell.FontColor = param.CellFontColor;
+			cell.FontOutlineColor = param.CellFontOutlineColor;
+			cell.TextStyle = param.CellTextStyle;
+			cell.FontSize.CopyFrom(param.CellFontSize);
+			cell.TextAlign = param.CellTextAlign;
+			cell.IsFontBold = param.IsCellFontBold;
+			cell.IsFontItalic = param.IsCellFontItalic;
+			cell.FontLineHeightRate.CopyFrom(param.CellLineHeightRate);
+			cell.FontPadding.CopyFrom(param.CellPadding);
+			cell.FontOuterBorderWidth.CopyFrom(param.CellOuterBorderWidth);
+
+		}
+
 		// セルのプロパティ変更時にUIを更新
 		if (
 			string.Equals(
