@@ -296,9 +296,11 @@ internal partial class TableShapeSource : IShapeSource2
 				var fontSize =
 					fSize > 0f ? fSize : DefaultFontSize;
 
-				var lineRate = lineHeightRate
-					.GetValue(ctx.Frame, ctx.Length, ctx.Fps);
-				var actualLineSpacing = (float)lineRate / 100.0f * fontSize;
+				var lineRate = lineHeightRate.GetValue(
+					ctx.Frame,
+					ctx.Length,
+					ctx.Fps
+				);
 
 				// 1行用と複数行用でキャッシュkeyを分離
 				var key = (
@@ -311,15 +313,21 @@ internal partial class TableShapeSource : IShapeSource2
 				);
 
 				// textFormatキャッシュ取得
-				if (!textFormatCache.TryGetValue(key, out var textFormat))
+				if (
+					!textFormatCache.TryGetValue(
+						key,
+						out var textFormat
+					)
+				)
 				{
-					textFormat = ctx.WriteFactory!.CreateTextFormat(
-						fontFamilyName: fontFamilyName,
-						fontSize: fontSize,
-						fontStretch: FontStretch.Normal,
-						fontStyle: fontStyle,
-						fontWeight: fontWeight
-					);
+					textFormat =
+						ctx.WriteFactory!.CreateTextFormat(
+							fontFamilyName: fontFamilyName,
+							fontSize: fontSize,
+							fontStretch: FontStretch.Normal,
+							fontStyle: fontStyle,
+							fontWeight: fontWeight
+						);
 					textFormatCache[key] = textFormat;
 					disposer.Collect(textFormat);
 				}
@@ -375,141 +383,85 @@ internal partial class TableShapeSource : IShapeSource2
 					textFormat,
 					textRect
 				);
-				var actualLineCount =
-					GetLineMetricsAndSetSpacing(
-						fontSize,
-						textFormat,
-						textLayout,
-						actualLineSpacing
-					);
 
 				if (
 					textStyle == CellTextStyle.ShapedBorder
-					|| textStyle == CellTextStyle.RoundedBorder
+					|| textStyle
+						== CellTextStyle.RoundedBorder
 				)
 				{
-					// 余分な高さ分を補正（中央揃え時のみ、1行は補正しない）
-					// ↓この補正を削除
-					/*
-					if (
-						textFormat.ParagraphAlignment == ParagraphAlignment.Center
-						&& actualLineCount > 1
-					)
+					var outlineWidth = (float)
+						outlineWidthAnim.GetValue(
+							ctx.Frame,
+							ctx.Length,
+							ctx.Fps
+						);
+					var origin = new Vector2(
+						textRect.Left,
+						textRect.Top
+					);
+
+					// テキスト領域でクリッピングして描画（領域をはみ出す文字を切る）
+					ctx.DeviceContext.PushAxisAlignedClip(
+						cellRect,
+						AntialiasMode.Aliased
+					);
+					try
 					{
-						var metrics = textLayout.Metrics;
-						var totalTextHeight = metrics.Height;
-						var cellCenterY = textRect.Top + textRect.Height / 2;
-						var newTop = cellCenterY - totalTextHeight / 2;
-						var newBottom = newTop + totalTextHeight;
-						textRect = new Rect(
-							textRect.Left,
-							newTop,
-							textRect.Right,
-							newBottom
+						var renderer =
+							new Renderers.OutlineTextRenderer(
+								ctx.DeviceContext,
+								GetTextBrush(
+									fontOutlineColor
+								),
+								GetTextBrush(fontColor),
+								origin,
+								outlineWidth,
+								textStyle
+							);
+						disposer.Collect(renderer);
+						textLayout.Draw(
+							nint.Zero,
+							renderer,
+							0.0f,
+							0.0f
 						);
 					}
-				 */
-                    var outlineWidth = (float)
-                        outlineWidthAnim.GetValue(
-                            ctx.Frame,
-                            ctx.Length,
-                            ctx.Fps
-                        );
-                    var origin = new Vector2(
-                        textRect.Left,
-                        textRect.Top
-                    );
-
-                    // テキスト領域でクリッピングして描画（領域をはみ出す文字を切る）
-                    ctx.DeviceContext.PushAxisAlignedClip(
-                        cellRect,
-                        AntialiasMode.Aliased
-                    );
-                    try
-                    {
-                        var renderer =
-                            new Renderers.OutlineTextRenderer(
-                                ctx.DeviceContext,
-                                GetTextBrush(
-                                    fontOutlineColor
-                                ),
-                                GetTextBrush(fontColor),
-                                origin,
-                                outlineWidth,
-                                textStyle
-                            );
-                        disposer.Collect(renderer);
-                        textLayout.Draw(
-                            nint.Zero,
-                            renderer,
-                            0.0f,
-                            0.0f
-                        );
-                    }
-                    finally
-                    {
-                        ctx.DeviceContext.PopAxisAlignedClip();
-                    }
-                }
-                else if (textStyle == CellTextStyle.Normal)
-                {
-                    // 通常描画も同様にテキスト矩形でクリップ
-                    ctx.DeviceContext.PushAxisAlignedClip(
-                        cellRect,
-                        AntialiasMode.Aliased
-                    );
-                    try
-                    {
-                        ctx.DeviceContext.DrawText(
+					finally
+					{
+						ctx.DeviceContext.PopAxisAlignedClip();
+					}
+				}
+				else if (textStyle == CellTextStyle.Normal)
+				{
+					// 通常描画も同様にテキスト矩形でクリップ
+					ctx.DeviceContext.PushAxisAlignedClip(
+						cellRect,
+						AntialiasMode.Aliased
+					);
+					try
+					{
+						ctx.DeviceContext.DrawText(
 							cell.Text,
 							textFormat,
 							textRect,
 							GetTextBrush(fontColor)
 						);
-                    }
-                    finally
-                    {
-                        ctx.DeviceContext.PopAxisAlignedClip();
-                    }
-                }
+					}
+					finally
+					{
+						ctx.DeviceContext.PopAxisAlignedClip();
+					}
+				}
 			}
 		}
 	}
 
-	static int GetLineMetricsAndSetSpacing(
-		float fontSize,
-		IDWriteTextFormat textFormat,
-		IDWriteTextLayout textLayout,
-		float actualLineSpacing
-	)
-	{
-		var metrics = new LineMetrics[10];
-		textLayout.GetLineMetrics(
-			metrics,
-			out var actualLineCount
-		);
-
-		if (actualLineCount > 1)
-		{
-			textFormat.SetLineSpacing(
-				LineSpacingMethod.Uniform,
-				actualLineSpacing,
-				fontSize * 0.85f
-			);
-		}
-		else
-		{
-			textFormat.SetLineSpacing(
-				LineSpacingMethod.Default,
-				fontSize,
-				fontSize * 0.85f
-			);
-		}
-
-		return actualLineCount;
-	}
-
-	[SuppressMessage("Usage", "SMA0040:Missing Using Statement", Justification = "<保留中>")]
+	[SuppressMessage(
+		"Usage",
+		"SMA0040:Missing Using Statement",
+		Justification = "<保留中>"
+	)]
 	private IDWriteTextLayout CreateTextLayout(
 		TableRenderContext ctx,
 		Models.TableCell cell,
@@ -538,7 +490,7 @@ internal partial class TableShapeSource : IShapeSource2
 	///
 	/// <param name="context"></param>
 	/// <param name="borderBrush"></param>
-	private static void DrawTableBorders(
+	static void DrawTableBorders(
 		TableRenderContext context,
 		ID2D1SolidColorBrush borderBrush
 	)
@@ -563,7 +515,7 @@ internal partial class TableShapeSource : IShapeSource2
 	/// </summary>
 	/// <param name="context"></param>
 	/// <param name="outerBorderBrush"></param>
-	private static void DrawTableOuterBorders(
+	static void DrawTableOuterBorders(
 		TableRenderContext context,
 		ID2D1SolidColorBrush outerBorderBrush
 	)
