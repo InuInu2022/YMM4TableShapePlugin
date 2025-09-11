@@ -147,12 +147,46 @@ public class TableShapeEditorViewModel : IDisposable
 			row.CollectionChanged += OnRowCollectionChanged;
 			foreach (var cell in row)
 			{
-				cell.PropertyChanged +=
-					OnCellPropertyChanged;
-				cell.PropertyChanging +=
-					OnCellPropertyChanging;
-				//TODO:Animation型プロパティはそれぞれにPropetyChanging設定必要
+				SubscribeToCellEvents(cell);
 			}
+		}
+	}
+
+	private void SubscribeToCellEvents(TableCell cell)
+	{
+		UnsubscribeFromCellEvents(cell);
+		cell.PropertyChanged +=
+			OnCellPropertyChanged;
+		cell.PropertyChanging +=
+			OnCellPropertyChanging;
+		SubscribeCellAnimationProp(
+			cell.FontSize,
+			OnCellPropertyChanging
+		);
+		SubscribeCellAnimationProp(
+			cell.FontLineHeightRate,
+			OnCellPropertyChanging
+		);
+		SubscribeCellAnimationProp(
+			cell.FontPadding,
+			OnCellPropertyChanging
+		);
+		SubscribeCellAnimationProp(
+			cell.FontOuterBorderWidth,
+			OnCellPropertyChanging
+		);
+	}
+
+	static void SubscribeCellAnimationProp(
+		Animation animProp,
+		PropertyChangingEventHandler handler
+	)
+	{
+		foreach (
+			var v in animProp.Values.OfType<INotifyPropertyChanging>()
+		)
+		{
+			v.PropertyChanging += handler;
 		}
 	}
 
@@ -169,11 +203,45 @@ public class TableShapeEditorViewModel : IDisposable
 			row.CollectionChanged -= OnRowCollectionChanged;
 			foreach (var cell in row)
 			{
-				cell.PropertyChanged -=
-					OnCellPropertyChanged;
-				cell.PropertyChanging -=
-					OnCellPropertyChanging;
+				UnsubscribeFromCellEvents(cell);
 			}
+		}
+	}
+
+	private void UnsubscribeFromCellEvents(TableCell cell)
+	{
+		cell.PropertyChanged -=
+			OnCellPropertyChanged;
+		cell.PropertyChanging -=
+			OnCellPropertyChanging;
+		UnsubscribeCellAnimationProp(
+			cell.FontSize,
+			OnCellPropertyChanging
+		);
+		UnsubscribeCellAnimationProp(
+			cell.FontLineHeightRate,
+			OnCellPropertyChanging
+		);
+		UnsubscribeCellAnimationProp(
+			cell.FontPadding,
+			OnCellPropertyChanging
+		);
+		UnsubscribeCellAnimationProp(
+			cell.FontOuterBorderWidth,
+			OnCellPropertyChanging
+		);
+	}
+
+	static void UnsubscribeCellAnimationProp(
+		Animation animProp,
+		PropertyChangingEventHandler handler
+	)
+	{
+		foreach (
+			var v in animProp.Values.OfType<INotifyPropertyChanging>()
+		)
+		{
+			v.PropertyChanging -= handler;
 		}
 	}
 
@@ -193,10 +261,7 @@ public class TableShapeEditorViewModel : IDisposable
 					OnRowCollectionChanged;
 				foreach (var cell in newRow)
 				{
-					cell.PropertyChanged +=
-						OnCellPropertyChanged;
-					cell.PropertyChanging +=
-						OnCellPropertyChanging;
+					SubscribeToCellEvents(cell);
 				}
 			}
 		}
@@ -210,10 +275,7 @@ public class TableShapeEditorViewModel : IDisposable
 					OnRowCollectionChanged;
 				foreach (var cell in oldRow)
 				{
-					cell.PropertyChanged -=
-						OnCellPropertyChanged;
-					cell.PropertyChanging -=
-						OnCellPropertyChanging;
+					UnsubscribeFromCellEvents(cell);
 				}
 			}
 		}
@@ -236,8 +298,13 @@ public class TableShapeEditorViewModel : IDisposable
 		}
 		catch (Exception ex)
 		{
-			Debug.WriteLine($"Error occurred while updating cells: {ex.Message}");
-			Log.Default.Write($"[{nameof(TableShapePlugin)}] {ex.Message}", ex);
+			Debug.WriteLine(
+				$"Error occurred while updating cells: {ex.Message}"
+			);
+			Log.Default.Write(
+				$"[{nameof(TableShapePlugin)}] {ex.Message}",
+				ex
+			);
 		}
 	}
 
@@ -251,20 +318,14 @@ public class TableShapeEditorViewModel : IDisposable
 		{
 			foreach (TableCell newCell in e.NewItems)
 			{
-				newCell.PropertyChanged +=
-					OnCellPropertyChanged;
-				newCell.PropertyChanging +=
-					OnCellPropertyChanging;
+				SubscribeToCellEvents(newCell);
 			}
 		}
 		if (e.OldItems is not null)
 		{
 			foreach (TableCell oldCell in e.OldItems)
 			{
-				oldCell.PropertyChanged -=
-					OnCellPropertyChanged;
-				oldCell.PropertyChanging -=
-					OnCellPropertyChanging;
+				UnsubscribeFromCellEvents(oldCell);
 			}
 		}
 		_ = UpdateCellsSafetyAsync();
@@ -313,6 +374,9 @@ public class TableShapeEditorViewModel : IDisposable
 			case nameof(TableCell.Font):
 			case nameof(TableCell.FontColor):
 			case nameof(TableCell.FontOutlineColor):
+			case nameof(TableCell.FontOuterBorderWidth):
+			case nameof(TableCell.FontLineHeightRate):
+			case nameof(TableCell.FontPadding):
 			case nameof(TableCell.VideoEffect):
 				ForceRefresh();
 				break;
